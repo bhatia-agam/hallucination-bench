@@ -10,7 +10,7 @@ current code and compares the outputs byte for byte: the v2.8 overhaul must leav
 Provenance only: run once with the PRE-change code (plan 0029, before claimmap-v2.8), e.g.::
 
     git worktree add /tmp/hb-pre <merge base>
-    PYTHONPATH=/tmp/hb-pre/src python scripts/index/build_v7_fixture.py --repo .
+    PYTHONPATH=/tmp/hb-pre/src python tests/v7_rebuild_fixture.py --repo .
 
 Re-running it after that rewrites the golden with whatever the code then does, so don't. No API
 calls: every answer comes from the stub below.

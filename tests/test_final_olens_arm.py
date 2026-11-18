@@ -1,10 +1,6 @@
 """Plan 0024: the final O-lens campaign arm (final-olens-rl600-x4) on the index families."""
 
-import importlib.util
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -98,85 +94,3 @@ def test_benign_roleplay_nested_campaign_arm(tmp_path: Path) -> None:
     with pytest.raises(wsb.WsbError, match="campaign config missing"):
         wsb.plan_calls(campaign=camp, readouts=tmp_path / "ro", out=out, arms=[ARM])
     assert ARM in wsb.KNOWN_ARMS and ARM not in wsb.ARMS  # opt-in, default runs unchanged
-
-
-def _load_script(name: str) -> Any:
-    spec = importlib.util.spec_from_file_location(
-        name, ROOT / "scripts" / "final_olens" / f"{name}.py"
-    )
-    assert spec and spec.loader
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def test_export_um_arm_keeps_only_the_arm(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    exp = _load_script("export_um_arm")
-    um, dest = tmp_path / "um", tmp_path / "dest"
-    for d, p in index.um_paths(um).items():
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            json.dumps({"uid": f"{d}-a", "method": "s3d"}) + "\n"
-            + json.dumps({"uid": f"{d}-b", "method": ARM, "x": "ü"}, ensure_ascii=False) + "\n"
-        )  # fmt: skip
-    monkeypatch.setattr("sys.argv", ["x", "--arm", ARM, "--um", str(um), "--dest", str(dest)])
-    exp.main()
-    for d, p in index.um_paths(dest).items():
-        got = [json.loads(x) for x in p.read_text().splitlines()]
-        assert got == [{"uid": f"{d}-b", "method": ARM, "x": "ü"}]
-
-
-def _wrapper(tmp_path: Path, code: str) -> subprocess.CompletedProcess[str]:
-    """Run ``code`` after importing the UM wrapper in a subprocess (it patches module globals)."""
-    env = {**os.environ, "UM_ARM": ARM, "UM_ROOT": str(tmp_path / "um"),
-           "PYTHONPATH": str(ROOT / "src")}  # fmt: skip
-    wrapper_dir = str(ROOT / "scripts" / "final_olens")
-    prog = (
-        f"import sys; sys.path.insert(0, {wrapper_dir!r}); sys.argv = ['x']\n"
-        + "import um_ladder_arm as W\n"
-        + code
-    )
-    return subprocess.run([sys.executable, "-c", prog], env=env, capture_output=True, text=True)
-
-
-def test_um_wrapper_redirects_every_output(tmp_path: Path) -> None:
-    code = """
-import json
-from hallucination_bench.evals.sibling_probe import um_ladder as U
-out = {}
-for cat in ("country", "capital_city", "holiday"):
-    W.DRV.OUT = W.DRV.REPO_ROOT / "outputs" / "sibling" / "um"
-    W.setup_domain(cat)
-    out[cat] = {k: str(getattr(W.DRV, k)) for k in ("OUT", "PROBES_DIR", "PROBES_ADJ_DIR",
-                "LABEL_DIR")}
-    out[cat]["readouts"] = W.DRV.READOUTS[W.ARM]
-row = {"samples": ["- a\\n- b", "- c"]}
-out["split"] = [U.cell_samples(W.ARM, row), U.cell_samples("s3d", row)]
-out["methods"] = list(U.METHODS)
-print(json.dumps(out))
-"""
-    r = _wrapper(tmp_path, code)
-    assert r.returncode == 0, r.stderr
-    got = json.loads(r.stdout.strip().splitlines()[-1])
-    um = (tmp_path / "um").resolve()
-    for cat in ("country", "capital_city", "holiday"):
-        base = um if cat == "country" else um / cat
-        assert got[cat]["OUT"] == str(base)
-        for k, sub in (("PROBES_DIR", "probes"), ("PROBES_ADJ_DIR", "probes_adj"),
-                       ("LABEL_DIR", "label")):  # fmt: skip
-            assert got[cat][k] == str(base / sub)
-        assert got[cat]["readouts"] == f"{ARM}/sibling_eval.jsonl"
-    assert got["split"][0] == got["split"][1] and len(got["split"][0]) == 3
-    assert got["methods"][-1] == ARM and len(got["methods"]) == 5
-
-
-def test_um_wrapper_refuses_other_stages_and_bad_roots(tmp_path: Path) -> None:
-    for stage in ("concepts", "probe-texts", "distractors", "figures", "todo"):
-        r = _wrapper(tmp_path, f"W.check_stage(['x', '--category', 'holiday', {stage!r}])")
-        assert r.returncode != 0 and "runs only" in r.stderr, stage
-    r = _wrapper(tmp_path, "W.check_stage(['x', 'label'])")
-    assert r.returncode == 0, r.stderr
-    r = _wrapper(tmp_path, "W.check_root(W.ROOT)")  # an empty dir is not a um copy
-    assert r.returncode != 0 and "not a copy" in r.stderr
-    r = _wrapper(tmp_path, "W.check_root(W.HB / 'outputs' / 'sibling' / 'um_copy')")
-    assert r.returncode != 0 and "inside" in r.stderr

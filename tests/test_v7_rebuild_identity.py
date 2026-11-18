@@ -1,6 +1,6 @@
 """Plan 0029 §3.1 / §6: a v7 (claimmap-v2.7 / +am2) root rebuilds byte-identically under the v8
 code. The fixture (inputs: readouts, caches, intent cache; outputs: what the pre-change code
-rebuilt) was written once by ``scripts/index/build_v7_fixture.py`` with the pre-change code."""
+rebuilt) was written once by ``tests/v7_rebuild_fixture.py`` with the pre-change code."""
 
 import importlib.util
 import json
@@ -16,7 +16,7 @@ from hallucination_bench.evals.wsbench_chat import run as wrun
 REPO = Path(__file__).resolve().parents[1]
 FIX = REPO / "tests" / "fixtures" / "v7_rebuild"
 _spec = importlib.util.spec_from_file_location(
-    "build_v7_fixture", REPO / "scripts" / "index" / "build_v7_fixture.py"
+    "v7_rebuild_fixture", REPO / "tests" / "v7_rebuild_fixture.py"
 )
 assert _spec is not None and _spec.loader is not None
 bvf = importlib.util.module_from_spec(_spec)

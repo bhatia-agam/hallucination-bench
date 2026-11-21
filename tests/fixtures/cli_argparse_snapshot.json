@@ -1268,6 +1268,68 @@
   },
   {
    "argv": [
+    "check"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "",
+    "option": null,
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "all"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "all",
+    "option": null,
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "readouts_contract",
+    "--readouts",
+    "/x/r.jsonl"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "readouts_contract",
+    "option": null,
+    "readouts": "/x/r.jsonl"
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "dry_run",
+    "--family",
+    "story",
+    "--option",
+    "colour=blue",
+    "--option",
+    "size=3"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "story",
+    "name": "dry_run",
+    "option": [
+     "colour=blue",
+     "size=3"
+    ],
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
     "overrefusal",
     "candidates"
    ],
@@ -1781,6 +1843,12 @@
    "rpm": 1500.0,
    "split": "<required>",
    "taxonomy": "v1"
+  },
+  "check": {
+   "family": "",
+   "name": "",
+   "option": null,
+   "readouts": ""
   },
   "consistency-v2": {
    "arms": null,

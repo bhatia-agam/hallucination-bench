@@ -389,6 +389,11 @@ class LLM:
                     status = getattr(e, "status_code", None)
                     if name in _FATAL or (status in (400, 401, 402, 403) and _is_config_400(e)):
                         raise JudgeConfigError(f"{name}: {str(e)[:300]}") from e
+                    if _no_credentials(e):
+                        raise JudgeConfigError(
+                            f"no Anthropic credentials for {model}: export ANTHROPIC_API_KEY "
+                            "or log in with `ant auth login`"
+                        ) from e
                     transient = (
                         status in _TRANSIENT
                         or "Timeout" in name
@@ -448,6 +453,12 @@ class LLM:
             if close is not None:
                 await close()
         self._clients.clear()
+
+
+def _no_credentials(e: Exception) -> bool:
+    """The SDK found no key, token or profile: it raises a ``TypeError`` before any request, so
+    every call would fail the same way. Fatal, like a 401."""
+    return isinstance(e, TypeError) and "authentication method" in str(e)
 
 
 def _is_config_400(e: Exception) -> bool:

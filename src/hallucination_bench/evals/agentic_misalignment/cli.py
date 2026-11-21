@@ -1,14 +1,14 @@
 """``hbench run|report --eval agentic_misalignment`` (plan 0008): the AM driver behind the shared
 ``run`` / ``report`` subcommands (moved out of ``hallucination_bench.cli`` by plan 0012 D2)."""
 
-import argparse
 import sys
 from pathlib import Path
 
 from hallucination_bench.cli import _items, _layers, _models
+from hallucination_bench.command import Command
 
 
-def run(args: argparse.Namespace) -> int:
+def run(args: Command) -> int:
     """``hbench run --eval agentic_misalignment`` (plan 0008): the AM driver, its own
     ``--stages`` (detect,summ,verify,map,intent) and readouts file; exit 4 when failed calls
     remain."""
@@ -97,7 +97,7 @@ def print_summary(name: str, s: dict) -> None:
     )
 
 
-def report(args: argparse.Namespace) -> int:
+def report(args: Command) -> int:
     """``hbench report --eval agentic_misalignment`` (plan 0008): rebuild every AM arm from its
     readouts (default root: the paper readouts) plus the cache, then report.md / report.json."""
     if args.view == "v2":

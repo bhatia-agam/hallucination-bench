@@ -446,7 +446,7 @@ def test_cli_registered():
 
     assert "hallucination_bench.evals.overrefusal.cli" in EVAL_CLIS
     args = build_parser().parse_args(["overrefusal", "run", "--arms", "a", "--limit", "3"])
-    assert args.or_cmd == "run" and args.limit == 3
+    assert args.prog == "hbench overrefusal run" and args.limit == 3
 
 
 def test_refusal_marker_backstop():

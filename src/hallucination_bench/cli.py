@@ -526,6 +526,14 @@ def judge_keys(c: Command) -> None:
     c.key("effort", DEFAULT_EFFORT, text, "Anthropic output_config.effort ('none' omits it)")
     c.key("rpm", 1500.0, number, "requests per minute, one pacer for the whole process")
     c.key("concurrency", 64, integer, "judge calls in flight at once")
+    c.key(
+        "judge_backend",
+        None,
+        optional(choice("live", "batches")),
+        "how Claude judge calls travel: live or batches (Message Batches: half price, outside "
+        "the live rate limits; see docs/judge_backends.md). Not given: $HBENCH_JUDGE_BACKEND, "
+        "else live",
+    )
 
 
 def eval_key(c: Command) -> None:
@@ -1010,6 +1018,10 @@ def main(argv: list[str] | None = None) -> int:
         print(show_text(command))
         return 0
     try:
+        if getattr(command, "judge_backend", None):
+            from hallucination_bench import llm
+
+            llm.set_backend(command.judge_backend)
         return command.execute()
     except JudgeConfigError as e:
         print(f"JUDGE CONFIG ERROR: {e}", file=sys.stderr)

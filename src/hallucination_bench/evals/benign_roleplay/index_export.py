@@ -37,9 +37,9 @@ INT_COLS = (
 
 
 def _readers() -> frozenset[str]:
-    from hallucination_bench import index
+    from hallucination_bench import index, readers
 
-    return index.SAFETY_READERS_V7_ADDED[index.BENIGN_ROLEPLAY]
+    return index.SAFETY_READERS_V7_ADDED[index.BENIGN_ROLEPLAY] | frozenset(readers.extra())
 
 
 def unit_rows(

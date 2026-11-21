@@ -60,6 +60,7 @@ from typing import Any
 import numpy as np
 
 from hallucination_bench import REPO_ROOT
+from hallucination_bench import readers as reader_names
 from hallucination_bench import taxonomy_v2 as tx
 
 INDEX_VERSION_V8 = "hindex-v8"
@@ -388,9 +389,12 @@ def claim_families(version: str = "v8") -> tuple[str, ...]:
 
 
 def safety_readers(family: str, version: str = "v8") -> frozenset[str]:
-    """The reader allowlist of a safety family (plan 0029: no final-olens-rl600-x4)."""
+    """The reader allowlist of a safety family (plan 0029: no final-olens-rl600-x4). A family
+    with an allowlist also admits ``reader_names.extra()`` (``$HBENCH_EXTRA_READERS``; none by
+    default)."""
     _require_v8(version)
-    return SAFETY_READERS_V8.get(family, frozenset())
+    out = SAFETY_READERS_V8.get(family, frozenset())
+    return out | frozenset(reader_names.extra()) if out else out
 
 
 def safety_rows(

@@ -1229,6 +1229,45 @@
   },
   {
    "argv": [
+    "try"
+   ],
+   "kind": "other",
+   "values": {
+    "dry_run": false,
+    "family": "wsbench_chat",
+    "judge_model": "claude-opus-5-5",
+    "n": 2,
+    "out": null,
+    "readouts": null
+   }
+  },
+  {
+   "argv": [
+    "try",
+    "--family",
+    "story",
+    "-n",
+    "5",
+    "--dry-run",
+    "--out",
+    "/o",
+    "--readouts",
+    "/x/r.jsonl",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "dry_run": true,
+    "family": "story",
+    "judge_model": "m",
+    "n": 5,
+    "out": "/o",
+    "readouts": "/x/r.jsonl"
+   }
+  },
+  {
+   "argv": [
     "overrefusal",
     "candidates"
    ],
@@ -1901,6 +1940,14 @@
    "skip_classify": false,
    "stages": null,
    "summarizer_model": null
+  },
+  "try": {
+   "dry_run": false,
+   "family": "wsbench_chat",
+   "judge_model": "claude-opus-5-5",
+   "n": 2,
+   "out": null,
+   "readouts": null
   },
   "units-v2": {
    "cases": "<required>",

@@ -43,6 +43,7 @@ READOUTS_FILE = "hallucination.jsonl"
 AM_EVAL = "agentic_misalignment"  # plan 0008: its own driver (dispatched first in run / report)
 # modules exposing ``COMMANDS``: their subcommands follow the shared ones, in this order
 EVAL_CLIS: list[str] = [
+    "hallucination_bench.tryout",  # the two-question try-out (`hbench try`)
     "hallucination_bench.evals.overrefusal.cli",  # plan 0015
     "hallucination_bench.evals.benign_roleplay.cli",  # plan 0023
 ]
@@ -166,7 +167,8 @@ def _apply_bank(args: Command, *, readouts: bool = False) -> None:
         args.readouts_root = str(paths.X3_READOUTS)
 
 
-def cmd_run(args: Command) -> int:
+def cmd_run(args: Command, llm: Any = None) -> int:
+    """``llm`` replaces the judge client of the main driver (``hbench try --dry-run``)."""
     _apply_bank(args, readouts=True)
     if getattr(args, "eval", None) == AM_EVAL:
         from hallucination_bench.evals.agentic_misalignment import cli as amcli
@@ -199,6 +201,7 @@ def cmd_run(args: Command) -> int:
         show_prompts=args.show_prompts,
         stages=_stages(args),
         sample_seed=args.sample_seed,
+        llm=llm,
     )
     for n, s in summaries.items():
         _print_summary(n, s)

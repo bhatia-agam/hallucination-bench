@@ -593,7 +593,7 @@ def test_docs_state_why() -> None:
     entry = readme[i : end if end > 0 else len(readme)]
     assert "a lens “recognition” is therefore a claim with no behavioural support" in entry
     assert bank.GATE_RULE in entry
-    assert "on the index from hindex-v7 (plan 0027)" in entry.lower()
+    assert "on the index as the `benign_roleplay` family (weight 2" in entry.lower()
 
 
 def test_cli_registered() -> None:

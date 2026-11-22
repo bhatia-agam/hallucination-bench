@@ -168,8 +168,8 @@ def cmd_try(args: Command) -> int:
             return code
         cells = re.search(r"cells_to_judge=(\d+)", log.getvalue())
         print(
-            f"{cells.group(1) if cells else '?'} cell(s) would be judged with {MAP_PROMPT}: "
-            "prompts built, 0 calls made, nothing spent"
+            f"{cells.group(1) if cells else '?'} cell(s) would be judged with the claim-map "
+            "prompt the index uses: prompts built, 0 calls made, nothing spent"
         )
     else:
         if toy:

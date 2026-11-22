@@ -47,7 +47,7 @@ def test_try_dry_run_end_to_end(family, tmp_path, capsys):
     assert summary["spend"]["total_usd"] == 0
     # nothing that reads like a failed run, and the claim-map prompt of record
     assert "failed" not in shown and "preflight" not in shown
-    assert "6 cell(s) would be judged with claimmap-v2.9" in shown
+    assert "6 cell(s) would be judged with the claim-map prompt the index uses" in shown
     assert json.loads((arm / "arm.json").read_text())["map_prompt"] == "claimmap-v2.9"
 
 

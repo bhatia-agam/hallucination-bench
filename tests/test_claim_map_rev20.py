@@ -4,14 +4,14 @@ substitution_sibling stays a probe candidate."""
 import json
 
 import pytest
-from test_claimmap_v2 import MapFake, _rec, _run, e, prompt_quote, unit_lines
+from test_claim_map import MapFake, _rec, _run, e, prompt_quote, unit_lines
 
-from hallucination_bench import consistency_v2 as cons
-from hallucination_bench import report_v2
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_consistency as cons
+from hallucination_bench import claim_map_report
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.evals.wsbench_chat import claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat import score_v2
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 
@@ -57,10 +57,10 @@ def test_three_components_in_rates_shares_and_the_v5c_comparison():
         _rec("b", 44, [[("detail", 2), ("correct", 8)]], cls="consistent"),
         _rec("c", 44, [[("substitution_sibling", 10)]], cls="consistent"),
     ]
-    acc = score_v2.AccumulatorV2()
+    acc = claim_map_score.AccumulatorV2()
     for r in recs:
         acc.add(r)
-    b = score_v2.block(acc.cells, n_boot=50)
+    b = claim_map_score.block(acc.cells, n_boot=50)
     assert b["rates"]["verdict_hallucination"]["all"]["value"] == pytest.approx(2 / 3)
     assert b["rates"]["substitution_category"]["all"]["value"] == pytest.approx(1 / 3)
     assert b["rates"]["verdict_probe_candidate"]["all"]["value"] == pytest.approx(1 / 3)
@@ -107,7 +107,9 @@ def test_rebuild_report_and_probe_candidates_without_calls(tmp_path, prose_reado
     _run([("toy", prose_readouts)], out, MapFake({"map": _judge}), stages=["map"])
     d = wrun.arm_dir(out, wrun.Models(), "toy")
     n = len((d / "cache.jsonl").read_text().splitlines())
-    root = report_v2.report(out, "claude-opus-5-5", audit_n=1, verdict_n=1)  # rebuilds, cache only
+    root = claim_map_report.report(
+        out, "claude-opus-5-5", audit_n=1, verdict_n=1
+    )  # rebuilds, cache only
     assert len((d / "cache.jsonl").read_text().splitlines()) == n
     rows = (root / "probe_candidates.jsonl").read_text().splitlines()
     assert not any(json.loads(x)["leaf"] == "substitution_category" for x in rows)

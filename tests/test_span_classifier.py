@@ -8,11 +8,11 @@ from collections import Counter
 import pytest
 from conftest import FakeLLM, readout_texts, span_lines
 
-from hallucination_bench import calibrate
-from hallucination_bench import taxonomy as tx
+from hallucination_bench import calibrate_span_classifier
+from hallucination_bench import span_taxonomy as tx
 from hallucination_bench.cache import Cache
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import taxonomy_v1 as tv1
+from hallucination_bench.judges import span_classifier as tv1
 
 SPANS = [
     tv1.SpanIn(0, "Picasso", "contradicted"),
@@ -198,7 +198,7 @@ def test_routing_on_class_not_kind(tmp_path):
 
 
 def test_dev_cases_are_valid_and_meet_the_coverage_requirements():
-    cases = calibrate.load_cases("dev")
+    cases = calibrate_span_classifier.load_cases("dev")
     spans = [(c, s) for c in cases for s in c["spans"]]
     gold = [s["gold"] for _c, s in spans]
     assert len(spans) >= 40
@@ -231,7 +231,7 @@ def test_case_validation_catches_bad_spans():
                       "unsupported_kind": "inference"}},
         ],
     }  # fmt: skip
-    errs = calibrate.validate_case(case)
+    errs = calibrate_span_classifier.validate_case(case)
     assert any("⟦READ⟧" in e for e in errs)
     assert any("verbatim" in e for e in errs)
     assert any("must be null" in e for e in errs)
@@ -252,36 +252,39 @@ def test_two_repeats_make_two_separate_calls(tmp_path):
     fake = FakeLLM()
     with Cache(tmp_path / "c.jsonl") as cache:
         labels = asyncio.run(
-            calibrate.classify_cases(
+            calibrate_span_classifier.classify_cases(
                 [case], split="dev", model="m", effort="low", cache=cache, llm=fake, repeats=2
             )
         )
         assert fake.n("classify") == 2
-        assert {cache.get(calibrate.cal_key("dev", "c1", r), "x") is None for r in (0, 1)} == {True}
+        assert {
+            cache.get(calibrate_span_classifier.cal_key("dev", "c1", r), "x") is None
+            for r in (0, 1)
+        } == {True}
         fake2 = FakeLLM()
         asyncio.run(
-            calibrate.classify_cases(
+            calibrate_span_classifier.classify_cases(
                 [case], split="dev", model="m", effort="low", cache=cache, llm=fake2, repeats=2
             )
         )
         assert fake2.n("classify") == 0  # each repeat cached under its own key
-    res = calibrate.score([case], labels, "dev")
+    res = calibrate_span_classifier.score([case], labels, "dev")
     assert res["mean"]["type_accuracy"] == 1.0 and res["mean"]["type_flip_rate"] == 0.0
     assert "disagreements" in res
-    held = calibrate.score([case], labels, "heldout")
+    held = calibrate_span_classifier.score([case], labels, "heldout")
     assert "disagreements" not in held
 
 
 def test_qwk_and_wilson():
-    assert calibrate.qwk([1, 2, 3], [1, 2, 3]) == pytest.approx(1.0)
-    assert calibrate.qwk([1, 2, 3, 1], [3, 2, 1, 3]) < 0
-    lo, hi = calibrate.wilson(0.9, 50)
+    assert calibrate_span_classifier.qwk([1, 2, 3], [1, 2, 3]) == pytest.approx(1.0)
+    assert calibrate_span_classifier.qwk([1, 2, 3, 1], [3, 2, 1, 3]) < 0
+    lo, hi = calibrate_span_classifier.wilson(0.9, 50)
     assert lo < 0.9 < hi
 
 
 def test_calibration_flip_rate_ignores_context_spans():
-    from hallucination_bench import calibrate as cal
-    from hallucination_bench.judges import taxonomy_v1 as tv1
+    from hallucination_bench import calibrate_span_classifier as cal
+    from hallucination_bench.judges import span_classifier as tv1
 
     gold = {"type": "detail", "target": "entity", "severity": 1, "unsupported_kind": None}
     case = {

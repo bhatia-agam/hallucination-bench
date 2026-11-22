@@ -1,4 +1,4 @@
-"""``hbench run|calibrate|report|consistency-v2|pilot-dump|pilot-dump-v2|units-v2``."""
+"""``hbench run|calibrate|report|consistency|pilot-dump|pilot-dump-units|gold-units|...``."""
 
 # The shared commands and helpers live here. An eval with its own subcommands keeps them in
 # ``evals/<eval>/cli.py`` (``register(sub)``, listed in EVAL_CLIS); an eval with its own driver
@@ -22,6 +22,33 @@ EVAL_CLIS: list[str] = [
     "hallucination_bench.evals.overrefusal.cli",  # plan 0015
     "hallucination_bench.evals.benign_roleplay.cli",  # plan 0023
 ]
+
+
+# The two pipelines a report or a calibration can be about, and the spellings each option value
+# and subcommand also answers to.
+SPANS = "spans"  # contradicted / unsupported spans and their classifier (stage `classify`)
+CLAIM_MAP = "claim_map"  # every segment of a readout mapped to a leaf (stage `map`)
+PIPELINES = (SPANS, CLAIM_MAP)
+PIPELINE_ALIASES = {"v1": SPANS, "v2": CLAIM_MAP}
+COMMAND_ALIASES = {
+    "consistency-v2": "consistency",
+    "pilot-dump-v2": "pilot-dump-units",
+    "units-v2": "gold-units",
+}
+
+
+def _pipeline(s: str) -> str:
+    return PIPELINE_ALIASES.get(s, s)
+
+
+class _Parser(argparse.ArgumentParser):
+    """The top-level parser: a subcommand also answers to its ``COMMAND_ALIASES`` spelling."""
+
+    def parse_known_args(self, args=None, namespace=None):  # type: ignore[no-untyped-def]
+        args = list(sys.argv[1:] if args is None else args)
+        if args and args[0] in COMMAND_ALIASES:
+            args[0] = COMMAND_ALIASES[args[0]]
+        return super().parse_known_args(args, namespace)
 
 
 def _layers(s: str | None) -> list[int] | None:
@@ -68,7 +95,7 @@ def _excuse_verifier(args: argparse.Namespace, map_prompt: str) -> str | None:
     for diagnostics). An explicit verifier with ``--anchor v5c`` is refused by
     ``check_verifier`` (exit 3). Rebuild / report replay the arm dir's recorded setting whatever
     this says; a judge run that differs exits 3."""
-    from hallucination_bench.judges import claimmap_v2 as cm
+    from hallucination_bench.judges import claim_map as cm
     from hallucination_bench.judges import continuation_verifier as cv
 
     flag = getattr(args, "excuse_verifier", None)
@@ -193,7 +220,7 @@ def _cmd_run_joint(args: argparse.Namespace, arms: list, models, out: Path) -> i
     """Plan 0029 §3.7: ``hbench run --joint``: the joint 11-layer cells of each ``--arms``
     target (sources: ``--joint-from`` in precedence order, default the arm itself)."""
     from hallucination_bench.evals.wsbench_chat import run as wrun
-    from hallucination_bench.judges.claimmap_v2 import JOINT_LAYERS
+    from hallucination_bench.judges.claim_map import JOINT_LAYERS
 
     paths = dict(arms)
     if args.joint_from:
@@ -255,12 +282,12 @@ def _print_summary(name: str, s: dict) -> None:
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
-    from hallucination_bench import calibrate
+    from hallucination_bench import calibrate_span_classifier
 
-    if args.taxonomy == "v2":
-        return _calibrate_v2(args)
+    if args.taxonomy == CLAIM_MAP:
+        return _calibrate_claim_map(args)
     model = args.classifier_model or args.judge_model
-    res = calibrate.run(
+    res = calibrate_span_classifier.run(
         args.split,
         model=model,
         effort=_effort(args.effort),
@@ -270,7 +297,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
         concurrency=args.concurrency,
         cases_path=Path(args.cases) if args.cases else None,
     )
-    print(calibrate.render_markdown(res))
+    print(calibrate_span_classifier.render_markdown(res))
     sp = res["spend_this_run"]
     print(f"\nspend this run: ${sp['usd']:.4f} ({sp['calls']} calls)")
     if args.split == "heldout":
@@ -278,10 +305,10 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
-def _calibrate_v2(args: argparse.Namespace) -> int:
-    from hallucination_bench import calibrate_v2
+def _calibrate_claim_map(args: argparse.Namespace) -> int:
+    from hallucination_bench import calibrate_claim_map
 
-    res = calibrate_v2.run(
+    res = calibrate_claim_map.run(
         args.split,
         model=args.map_model or args.judge_model,
         effort=_effort(args.effort),
@@ -293,7 +320,7 @@ def _calibrate_v2(args: argparse.Namespace) -> int:
         anchor=args.anchor,
         prompt=args.prompt,
     )
-    print(calibrate_v2.render_markdown(res))
+    print(calibrate_claim_map.render_markdown(res))
     sp = res["spend_this_run"]
     print(f"\ncoverage: {json.dumps(res['coverage'])}")
     print(f"spend this run: ${sp['usd']:.4f} ({sp['calls']} calls)")
@@ -365,12 +392,12 @@ def _cmd_report(args: argparse.Namespace) -> int:
         from hallucination_bench.evals.agentic_misalignment import cli as amcli
 
         return amcli.report(args)
-    from hallucination_bench import report
+    from hallucination_bench import span_report
 
-    if args.view == "v2":
-        from hallucination_bench import report_v2
+    if args.view == CLAIM_MAP:
+        from hallucination_bench import claim_map_report
 
-        root = report_v2.report(
+        root = claim_map_report.report(
             Path(args.out),
             args.judge_model,
             rebuild=not args.no_rebuild,
@@ -385,7 +412,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
         )
         return 0
 
-    root = report.report(
+    root = span_report.report(
         Path(args.out),
         args.judge_model,
         rebuild=not args.no_rebuild,
@@ -397,17 +424,17 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_consistency_v2(args: argparse.Namespace) -> int:
-    from hallucination_bench import consistency_v2
+def cmd_consistency(args: argparse.Namespace) -> int:
+    from hallucination_bench import claim_map_consistency
 
     if args.rescore:
-        res = consistency_v2.rescore(Path(args.out), args.map_model or args.judge_model)
-        print(consistency_v2.render_markdown(res))
+        res = claim_map_consistency.rescore(Path(args.out), args.map_model or args.judge_model)
+        print(claim_map_consistency.render_markdown(res))
         print("\nre-scored from the cached r0/r1 cells: no API calls")
         return 0
     if not args.arms:
         raise SystemExit("--arms is required unless --rescore")
-    res = consistency_v2.run(
+    res = claim_map_consistency.run(
         args.arms,
         readouts_root=Path(args.readouts_root),
         out_root=Path(args.out),
@@ -417,17 +444,17 @@ def cmd_consistency_v2(args: argparse.Namespace) -> int:
         rpm=args.rpm,
         concurrency=args.concurrency,
     )
-    print(consistency_v2.render_markdown(res))
+    print(claim_map_consistency.render_markdown(res))
     sp = res["spend_this_run"]
     print(f"\nspend this run: ${sp['usd']:.4f} ({sp['calls']} calls)")
     return 0
 
 
 def cmd_pilot_dump(args: argparse.Namespace) -> int:
-    from hallucination_bench import report
-    from hallucination_bench.calibrate import validate_case
+    from hallucination_bench import span_report
+    from hallucination_bench.calibrate_span_classifier import validate_case
 
-    cases = report.pilot_dump(
+    cases = span_report.pilot_dump(
         Path(args.out),
         args.judge_model,
         args.arms.split(","),
@@ -449,11 +476,11 @@ def cmd_pilot_dump(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_pilot_dump_v2(args: argparse.Namespace) -> int:
-    from hallucination_bench import report_v2
-    from hallucination_bench.calibrate_v2 import validate_case
+def cmd_pilot_dump_units(args: argparse.Namespace) -> int:
+    from hallucination_bench import claim_map_report
+    from hallucination_bench.calibrate_claim_map import validate_case
 
-    cases = report_v2.pilot_dump_v2(
+    cases = claim_map_report.pilot_dump_units(
         Path(args.out),
         args.judge_model,
         args.arms.split(","),
@@ -470,9 +497,9 @@ def cmd_pilot_dump_v2(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_units_v2(args: argparse.Namespace) -> int:
+def cmd_gold_units(args: argparse.Namespace) -> int:
     """Fill each case's ``gold.units`` with the production units (leaf null) for labelling."""
-    from hallucination_bench.calibrate_v2 import skeleton
+    from hallucination_bench.calibrate_claim_map import skeleton
 
     src = Path(args.cases)
     cases = [json.loads(x) for x in src.read_text(encoding="utf-8").splitlines() if x.strip()]
@@ -526,7 +553,7 @@ def _bank(p: argparse.ArgumentParser) -> None:
 
 
 def _prompt_choices() -> list[str]:
-    from hallucination_bench.judges.claimmap_v2 import VERSIONS
+    from hallucination_bench.judges.claim_map import VERSIONS
 
     return list(VERSIONS)
 
@@ -569,8 +596,8 @@ def _anchor(p: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="hbench", description=__doc__)
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    ap = _Parser(prog="hbench", description=__doc__)
+    sub = ap.add_subparsers(dest="cmd", required=True, parser_class=argparse.ArgumentParser)
 
     r = sub.add_parser("run", help="judge arms (summarise -> span -> verify -> map -> classify)")
     _common(r)
@@ -665,10 +692,11 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--split", choices=("dev", "heldout"), required=True)
     c.add_argument(
         "--taxonomy",
-        choices=("v1", "v2"),
-        default="v1",
-        help="v1: the taxonomy-v1 classifier on {split}.jsonl; v2: the claim map on "
-        "{split}_v2.jsonl",
+        type=_pipeline,
+        choices=PIPELINES,
+        default=SPANS,
+        help="what to calibrate: spans = the span classifier on {split}.jsonl; claim_map = the "
+        "claim-map judge on {split}_v2.jsonl",
     )
     c.add_argument("--classifier-model", default=None)
     c.add_argument("--map-model", default=None)
@@ -676,7 +704,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--prompt",
         choices=_prompt_choices(),
         default="claimmap-v2.7",
-        help="--taxonomy v2: the claim-map prompt version (plan 0029)",
+        help="--taxonomy claim_map: the claim-map prompt version (plan 0029)",
     )
     _anchor(c)
     c.add_argument("--repeats", type=int, default=2)
@@ -688,10 +716,19 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--judge-model", default=DEFAULT_MODEL)
     rp.add_argument("--no-rebuild", action="store_true")
     rp.add_argument(
-        "--view", choices=("v1", "v2"), default="v1", help="v2: the claim-map report (plan 0002)"
+        "--view",
+        type=_pipeline,
+        choices=PIPELINES,
+        default=SPANS,
+        help="which report: spans = contradicted and unsupported spans; claim_map = the claim-map "
+        "report (plan 0002)",
     )
-    rp.add_argument("--audit-n", type=int, default=None, help="per leaf; default 15 (v1) / 10 (v2)")
-    rp.add_argument("--audit-verdict-n", type=int, default=20, help="v2: audit samples per verdict")
+    rp.add_argument(
+        "--audit-n", type=int, default=None, help="per leaf; default 15 (spans) / 10 (claim_map)"
+    )
+    rp.add_argument(
+        "--audit-verdict-n", type=int, default=20, help="claim_map: audit samples per verdict"
+    )
     rp.add_argument("--seed", type=int, default=0)
     rp.add_argument(
         "--readouts-root",
@@ -704,7 +741,7 @@ def build_parser() -> argparse.ArgumentParser:
     rp.set_defaults(fn=_cmd_report)
 
     cs = sub.add_parser(
-        "consistency-v2", help="claim-map judge consistency: two fresh :M calls per sampled cell"
+        "consistency", help="claim-map judge consistency: two fresh :M calls per sampled cell"
     )
     _common(cs)
     cs.add_argument("--arms", default=None, help="arm:layer,... e.g. s3d-rl600:44,jlens:44")
@@ -723,7 +760,7 @@ def build_parser() -> argparse.ArgumentParser:
     cs.add_argument("--summarizer-model", default=None)
     cs.add_argument("--classifier-model", default=None)
     cs.add_argument("--map-model", default=None)
-    cs.set_defaults(fn=cmd_consistency_v2)
+    cs.set_defaults(fn=cmd_consistency)
 
     pd = sub.add_parser("pilot-dump", help="sample pilot spans as unlabelled calibration cases")
     pd.add_argument("--out", default="outputs")
@@ -736,7 +773,8 @@ def build_parser() -> argparse.ArgumentParser:
     pd.set_defaults(fn=cmd_pilot_dump)
 
     p2 = sub.add_parser(
-        "pilot-dump-v2", help="dump real cells with production units for v2 hand-labelling"
+        "pilot-dump-units",
+        help="dump real cells with their production units, unlabelled, for claim-map gold",
     )
     p2.add_argument("--out", default="outputs")
     p2.add_argument("--judge-model", default=DEFAULT_MODEL)
@@ -745,14 +783,15 @@ def build_parser() -> argparse.ArgumentParser:
     p2.add_argument("--per-stratum", type=int, default=3, help="cells per arm x v5c cell class")
     p2.add_argument("--seed", type=int, default=0)
     p2.add_argument("--dest", required=True)
-    p2.set_defaults(fn=cmd_pilot_dump_v2)
+    p2.set_defaults(fn=cmd_pilot_dump_units)
 
     u2 = sub.add_parser(
-        "units-v2", help="fill v2 cases' gold.units with the production unit split (leaf null)"
+        "gold-units",
+        help="fill claim-map cases' gold.units with the production unit split (leaf null)",
     )
     u2.add_argument("--cases", required=True)
     u2.add_argument("--dest", required=True)
-    u2.set_defaults(fn=cmd_units_v2)
+    u2.set_defaults(fn=cmd_gold_units)
 
     ix = sub.add_parser(
         "index",

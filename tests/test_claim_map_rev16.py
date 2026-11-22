@@ -5,16 +5,16 @@ import asyncio
 import json
 
 import pytest
-from test_claimmap_v2 import MapFake, _rec, _run, default_map, e, sp
+from test_claim_map import MapFake, _rec, _run, default_map, e, sp
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import consistency_v2 as cons
-from hallucination_bench import report_v2
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_consistency as cons
+from hallucination_bench import claim_map_report
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.cache import Cache
+from hallucination_bench.evals.wsbench_chat import claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat import score_v2
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 
@@ -196,10 +196,10 @@ def test_false_claim_and_detail_are_headline_metrics(tmp_path):
         _rec("b", 44, [[("detail", 5), ("correct", 5)]], cls="consistent"),
         _rec("c", 44, [[("unverifiable", 8)]], cls="consistent"),
     ]
-    acc = score_v2.AccumulatorV2()
+    acc = claim_map_score.AccumulatorV2()
     for r in recs:
         acc.add(r)
-    b = score_v2.block(acc.cells, n_boot=50)
+    b = claim_map_score.block(acc.cells, n_boot=50)
     cmp_ = b["v5c_comparison"]
     assert cmp_["v2_false_claim_rate"]["value"] == pytest.approx(1 / 3)
     assert cmp_["v2_detail_rate"]["value"] == pytest.approx(1 / 3)
@@ -215,7 +215,7 @@ def test_false_claim_and_detail_are_headline_metrics(tmp_path):
         },
         "spend_map": {"usd": 0.0},
     }
-    md, _ = report_v2.build({"toy": summary}, "m")
+    md, _ = claim_map_report.build({"toy": summary}, "m")
     head = next(line for line in md.splitlines() if line.startswith("| arm | n readouts | hall"))
     assert "↳ false_claim | ↳ detail" in head
     share_row = md.split("Headline: character-weighted verdict shares, per arm")[1].splitlines()

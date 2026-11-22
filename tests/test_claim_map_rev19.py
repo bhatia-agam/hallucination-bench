@@ -3,14 +3,14 @@
 
 import json
 
-from test_claimmap_v2 import MapFake, _run, e, prompt_quote, unit_lines
+from test_claim_map import MapFake, _run, e, prompt_quote, unit_lines
 
-from hallucination_bench import consistency_v2 as cons
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_consistency as cons
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.cache import Cache, fingerprint
-from hallucination_bench.evals.wsbench_chat import bank, score_v2
+from hallucination_bench.evals.wsbench_chat import bank, claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 CONV = cm.conversation_text("Where is the Eiffel Tower?", "It is in Paris⟦READ⟧, France.")
@@ -72,7 +72,7 @@ def test_hedged_segments_are_unverifiable_whatever_the_judge_said():
     assert c["n_hedged_remapped"] == 3
     assert c["n_probe_candidates"] == 1  # only the single substitution stays a probe candidate
     assert segs[1].probe_target is None and segs[4].probe_target == "Berlin"
-    assert [score_v2.hedged_origin(s.to_dict()) for s in segs] == [
+    assert [claim_map_score.hedged_origin(s.to_dict()) for s in segs] == [
         "hallucination",
         "substitution",
         "correct",

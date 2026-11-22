@@ -100,10 +100,10 @@ def print_summary(name: str, s: dict) -> None:
 def report(args: argparse.Namespace) -> int:
     """``hbench report --eval agentic_misalignment`` (plan 0008): rebuild every AM arm from its
     readouts (default root: the paper readouts) plus the cache, then report.md / report.json."""
-    if args.view == "v2":
+    if args.view == "claim_map":
         raise SystemExit(
-            "report --eval agentic_misalignment has no --view v2: its report is the claim map "
-            "already (drop --view)"
+            "report --eval agentic_misalignment has no --view claim_map: its report is the claim "
+            "map already (drop --view)"
         )
     from hallucination_bench.evals.agentic_misalignment import report as amreport
 

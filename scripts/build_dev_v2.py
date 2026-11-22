@@ -29,7 +29,7 @@ dev2-35 guide). New anchors: dev2-39 (realised paraphrases), dev2-40 (paraphrase
 contradicted continuation), dev2-41 (contradicted details; Maria unsupported).
 
 Plan rev 16 (12 leaves): the labels in this file keep the fine leaves of earlier revisions;
-``build`` maps them through the merges (``calibrate_v2.remap_case``: e.g. ``stated_after`` ->
+``build`` maps them through the merges (``calibrate_claim_map.remap_case``: e.g. ``stated_after`` ->
 ``correct`` with tag ``source = after``). dev2-36 stays ``false_claim`` (a different answer to the
 question). New anchors (written in rev-16 leaves): dev2-42 (context word -> detail), dev2-43
 (flood in a tobacco-smell chat -> false_claim), dev2-44 (spill cleaned up, welcome to Oakville
@@ -41,7 +41,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from hallucination_bench.calibrate_v2 import case_units, remap_case, validate_case
+from hallucination_bench.calibrate_claim_map import case_units, remap_case, validate_case
 
 DEST = Path(__file__).resolve().parents[1] / "data" / "calibration" / "dev_v2.jsonl"
 M = "⟦READ⟧"

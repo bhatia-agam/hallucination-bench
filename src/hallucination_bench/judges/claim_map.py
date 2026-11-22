@@ -1,7 +1,8 @@
-"""The claim-map judge (``claimmap-v2``): every unit of every readout gets a taxonomy-v2 leaf.
+"""The claim-map judge (prompts ``claimmap-v2.x``): every unit of every readout gets a leaf.
 
 One call per non-empty cell, whatever the v5c class of its readouts (plan 0002, §Inputs). The
-system prompt is rendered from :mod:`hallucination_bench.taxonomy_v2`. Two modes (plan rev 13):
+system prompt is rendered from :mod:`hallucination_bench.claim_map_taxonomy`. Two modes (plan
+rev 13):
 
 * **single-call** (``anchor="none"``, the default): code split -> one ``:M`` call -> code
   roll-up. No v5c spans are passed, so there are no established units, no rule 2, no
@@ -33,7 +34,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.llm import schema_block
 from hallucination_bench.units import Normalised, Unit

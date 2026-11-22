@@ -9,15 +9,21 @@ unsupported / strict / lenient rates are not ranked beside the prose arms.
 
 import json
 import random
-from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 from hallucination_bench.evals import bank_for
 from hallucination_bench.evals.wsbench_chat import NAME, bank  # chat: pilot_dump stays chat-only
-from hallucination_bench.evals.wsbench_chat.run import STAGES, Models, model_slug, rebuild_arm
+from hallucination_bench.evals.wsbench_chat.run import STAGES, Models, rebuild_arm
 from hallucination_bench.judges.v5c import SPECIFIC_CLASSES
+from hallucination_bench.run_outputs import (
+    _context,
+    arm_dirs,
+    iter_cells,
+    load_arm_json,
+    model_root,
+)
 
 CONTRA_COLS: tuple[tuple[str, str], ...] = (
     ("v5c rate", "hallucination_rate"),
@@ -39,14 +45,6 @@ STRICT_COLS: tuple[tuple[str, str], ...] = (
     ("disputed", "disputed_rate"),
     ("verify coverage", "verify_coverage"),
 )
-
-
-def model_root(out_root: Path, judge_model: str, eval_name: str = NAME) -> Path:
-    return Path(out_root) / eval_name / model_slug(judge_model)
-
-
-def arm_dirs(root: Path) -> list[Path]:
-    return sorted(p.parent for p in root.glob("*/arm.json"))
 
 
 def _fmt(v: Any, ci: Any = None, pct: bool = True) -> str:
@@ -155,24 +153,6 @@ def build(
     return "\n".join(md), js
 
 
-def iter_cells(d: Path) -> Iterator[dict[str, Any]]:
-    p = d / "cells.jsonl"
-    if not p.exists():
-        return
-    with p.open(encoding="utf-8") as fh:
-        for line in fh:
-            if line.strip():
-                yield json.loads(line)
-
-
-def _context(rec: dict[str, Any], width: int = 400, bank_mod: ModuleType = bank) -> tuple[str, str]:
-    item = next(it for it in bank_mod.load_items() if it["id"] == rec["id"])
-    site = next(s for s in item["sites"] if int(s["pos"]) == rec["pos"])
-    mr = bank_mod.marked_response(item, site)
-    i = mr.index("⟦READ⟧")
-    return item["prompt"], mr[max(0, i - width) : i + width]
-
-
 def audit_samples(
     dirs: list[Path], *, n: int = 15, seed: int = 0, bank_mod: ModuleType = bank
 ) -> str:
@@ -216,10 +196,6 @@ def audit_samples(
                 "",
             ]
     return "\n".join(out)
-
-
-def load_arm_json(d: Path) -> dict[str, Any]:
-    return json.loads((d / "arm.json").read_text())
 
 
 def report(

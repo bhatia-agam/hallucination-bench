@@ -4,9 +4,9 @@ applies the version-aware gold overrides (v2.7 keeps the shared gold)."""
 
 import pytest
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import taxonomy_v2 as tx
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.judges import claim_map as cm
 
 V27, V28 = "claimmap-v2.7", "claimmap-v2.8"
 S7, S8 = cm.VERSIONS[V27].system, cm.VERSIONS[V28].system

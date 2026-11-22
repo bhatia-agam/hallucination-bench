@@ -69,6 +69,10 @@ def _new_spelling(argv: list[str], n_command: int) -> list[str]:
     return [*argv[:n_command], *bare, *out.values()]
 
 
+# keys the argparse parser required that now have a default
+NEW_DEFAULTS = {"final": {"manifest": str(cli.INDEX_MANIFEST)}}
+
+
 def test_every_subcommand_is_a_pydra_config():
     leaves = dict(_leaves())
     assert set(leaves) == set(SNAPSHOT["defaults"])
@@ -80,7 +84,7 @@ def test_every_subcommand_is_a_pydra_config():
 def test_defaults_equal_the_argparse_defaults(name):
     cmd = dict(_leaves())[name]()
     got = {k: getattr(cmd, k) for k in cmd._kinds}
-    assert got == _expected(SNAPSHOT["defaults"][name])
+    assert got == _expected(SNAPSHOT["defaults"][name]) | NEW_DEFAULTS.get(name, {})
     for key in got:  # --help has a meaning for every key
         assert cmd._meanings[key].strip()
 
@@ -194,3 +198,32 @@ def test_one_command_runs_another_through_pydra():
     )
     with pytest.raises(command.UsageError, match="unknown key 'nope'"):
         cli.Run.of(nope=1)
+
+
+def test_descriptive_names_resolve_to_the_values_they_stand_for(capsys):
+    """`map_prompt=current` and `bank=main` are replaced at parse time, so the command holds
+    (and a run records) the value itself; the value's own spelling still works."""
+    from hallucination_bench import taxonomy_v2
+
+    assert cli.MAP_PROMPT_NAMES == {"current": taxonomy_v2.V29}
+    assert cli.BANK_NAMES == {"main": "x3"}
+    shown = []
+    for argv in (
+        ["run", "map_prompt=current", "bank=main", "--show"],
+        ["run", "map_prompt=claimmap-v2.9", "bank=x3", "--show"],
+        ["run", "--map-prompt", "current", "--bank", "main", "--show"],
+    ):
+        assert cli.main(argv) == 0
+        shown.append(json.loads(capsys.readouterr().out))
+    assert shown[0] == shown[1] == shown[2]
+    assert shown[0]["map_prompt"] == "claimmap-v2.9" and shown[0]["bank"] == "x3"
+    with pytest.raises(SystemExit) as stop:
+        cli.main(["run", "map_prompt=latest", "--show"])
+    assert stop.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_final_checks_the_shipped_manifest_by_default(capsys):
+    assert cli.INDEX_MANIFEST.is_file()
+    assert cli.main(["final", "--show"]) == 0
+    assert json.loads(capsys.readouterr().out)["manifest"] == str(cli.INDEX_MANIFEST)

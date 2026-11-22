@@ -2,179 +2,201 @@
 
 HallucinationBench measures how much of what an activation-reading lens says is hallucinated.
 A lens (O-lens, NLA, J-lens, logit lens, ...) reads a model's activations and describes them;
-a judge maps every claim in every readout to grounded, hallucinated or neither, across several
-families of prompts (chat, stories, agentic scenarios, user modelling, refusals, role-play).
-The headline number is the **hallucination index**: the weighted share of a lens's claims that
-are hallucinated, lower is better.
+a judge compares every claim in every readout with the real conversation and marks it
+grounded, hallucinated or neither. Seven families of prompts cover chat, stories, agentic
+scenarios, user modelling, refusals and role-play.
+
+**The score** is the hallucination index: the weighted share of a lens's claims that are
+hallucinated, in percent with a 95% interval, one row per lens and layer. Lower is better.
+
+## Requirements
+
+| | what you need |
+|---|---|
+| Software | Python 3.12 or newer and [`uv`](https://docs.astral.sh/uv/). |
+| Judge access | An Anthropic credential: `ANTHROPIC_API_KEY`, or `ant auth login` once (the `ant` CLI profile; nothing to export), or `ANTHROPIC_AUTH_TOKEN` (an OAuth bearer token). The judge is `claude-opus-5-5` unless you pass `judge_model=`. With no credential a judging command stops at its first call with `JUDGE CONFIG ERROR: no Anthropic credentials` (exit 3). |
+| Hardware to judge | None beyond a laptop: judging is API calls. |
+| Hardware to produce readouts | This repo does not produce readouts; it judges the files your lens wrote. The timings below are for a lens on Qwen3.6-27B served on NVIDIA B200 GPUs (183 GiB), where the served reader used 174 GiB. |
+| Disk | 50 MB for the checkout. The cell lists of all seven families are 21.5 GB. |
+| Network | The Anthropic API. Two families need more than this checkout: `benign_roleplay` is judged with WorkspaceBench's judge and `sibling` reads probe data, both located by `HBENCH_*` variables ([docs/commands.md](docs/commands.md)). |
+
+## Time and cost
+
+One prose lens on Qwen3.6-27B at 11 layers, measured on NVIDIA B200 GPUs with a served reader.
+Your numbers depend on your reader and your API rate limits. Judging dominates both time and
+cost.
+
+| what you run | prompts / cells | GPU-hours to read | wall-clock to read | judge calls | judge wall-clock | judge cost | total time |
+|---|---|---|---|---|---|---|---|
+| The two-prompt try-out | 2 / 6 | none (shipped example readouts) | none | about 20 | 22 s | $0.20 | under a minute |
+| `story` | 20 / 1,760 | 0.07 | counted in the next row | 1,760 claim-map calls plus their checks | 10 min at 64 calls in flight | $69 | about 10 min |
+| `main` | 446 / 65,164 | 0.24 with `story` | about 2 min on 12 GPUs (estimate) | 65,164 claim-map calls plus their checks | 77 min at 256 calls in flight, `story` included | $2,105 | about 80 min (estimate: read, then judge) |
+| All seven families | 2,104,267 cells | 6.9 (estimate) | 35 min on 12 GPUs (estimate) | not measured | not measured | not measured | not measured |
+
+A cell is one (prompt, layer, position) readout. Costs are at list prices.
 
 ## Install
 
 ```bash
 git clone https://github.com/camila-blank/hallucination-bench && cd hallucination-bench
-uv sync                        # Python >= 3.12; dev tools come with the dev group
-uv run hbench check dry_run    # 1 s, offline, no key: the pipeline builds its judge prompts
+uv sync
+uv run hbench check dry_run    # offline, no key: the pipeline builds its judge prompts
 ```
 
-Judging calls Claude (`claude-opus-5-5` by default). Any one of these works:
-
-- `export ANTHROPIC_API_KEY=...`
-- `ant auth login` once (the keyless `ant` CLI profile; nothing to export)
-- `ANTHROPIC_AUTH_TOKEN` set to an OAuth bearer token
-
-With none of them a judging command stops at its first call with `JUDGE CONFIG ERROR: no
-Anthropic credentials` (exit 3). Paths outside the repo (readouts roots, sibling checkouts) are
-`HBENCH_*` environment variables with defaults, listed in `src/hallucination_bench/paths.py`.
-The full test suite is `uv run pytest -q` (offline, about 10 minutes).
-
-## Try it in a minute
-
-Two items of one family, end to end, with no key and no readouts of your own:
+## Try it on two prompts
 
 ```bash
-uv run hbench try --dry_run                  # the main chat family
-uv run hbench try family=story --dry_run
+uv run hbench try --dry_run    # no key, no GPU: shows the prompt the judge would get
+uv run hbench try              # judges for real: about 20 calls
 ```
 
 ```text
-== hbench try: wsbench_chat, 2 item(s), readouts examples/readouts/wsbench_chat.jsonl
+== hbench try: wsbench_chat, 2 item(s), readouts <checkout>/examples/readouts/wsbench_chat.jsonl
 [1] chat-dailydialog-0000
     question: Where's your better half?
     model's reply: That’s a charming question! Since I’m an AI, I don’t have a spouse ...
     expected: every claim a readout makes is supported by the conversation up to the token it was read at
     readouts in the file: 3 cells at layer(s) [44]
 ...
-== judge (dry run: prompts are built, no call is made)
-6 cell(s) would be judged with claimmap-v2.9: prompts built, 0 calls made, nothing spent
-== the first judge prompt (first 12 lines)
-== report (empty in a dry run: nothing was judged)
+== report
 == outputs
-  judge cache (one row per call; resumable): outputs/try/wsbench_chat/judged/wsbench_chat/claude-opus-5-5/try/cache.jsonl
   per-cell verdicts: outputs/try/wsbench_chat/judged/wsbench_chat/claude-opus-5-5/try/cells.jsonl
   report: outputs/try/wsbench_chat/judged/wsbench_chat/claude-opus-5-5/report.md
+  hallucination index (one family of seven): outputs/try/wsbench_chat/judged/index/claude-opus-5-5/index.md
 ```
 
-It shows each item, the prompt the judge would get, and where every output file is.
+It shows each prompt with the model's reply, judges the shipped example readouts with the
+claim-map prompt the index uses, and lists every file it wrote. `family=story` tries the story
+family; the other five have their own drivers and no try-out. Pass `readouts=<your file>` to
+try your own lens and `n=` for more prompts. A judge answer that fails validation is asked
+again, up to three passes; if `failed calls remain` after that, run the command again and only
+those calls are re-asked.
 
-- **For real:** drop `--dry_run`. The two example items are 6 cells and about 20 judge calls,
-  about $0.20 at list prices, under a minute. It needs the credentials from Install. A judge
-  answer that fails validation is asked again, up to three passes; if `failed calls remain`
-  after that, run the same command again: only those calls are re-asked.
-- **Your own lens:** `readouts=<file>`, one JSONL row per cell (`{"id", "layer", "pos",
-  "samples": [...]}` or `"tokens"` + `"scores"`); `n=` for more items.
-- **What it covers:** `family=wsbench_chat` is the chat family, which the index calls `main`;
-  `family=story` is `story`. The other five index families have their own drivers and no
-  try-out ([Families and weights](#families-and-weights)). The try-out judges with
-  `claimmap-v2.9`, the claim-map prompt of the current index.
+## Run it
 
-## The commands you will use
+The `main` family, on the shipped example so that every line runs as written:
 
-Every command takes its options as `key=value` (a boolean as `--key`); `--show` prints the
-resolved config without running, `--help` lists every key with its default. The old
-`--some-flag value` spelling still works.
+```bash
+# 1. readouts: <root>/<lens>/hallucination.jsonl, one row per cell (the contract below)
+mkdir -p outputs/example_readouts/mylens
+cp examples/readouts/wsbench_chat.jsonl outputs/example_readouts/mylens/hallucination.jsonl
 
-| command | what it does |
+# 2. judge: a few cells first, then the whole file (resumable: a re-run pays for what is missing)
+uv run hbench run out=outputs/mylens readouts_root=outputs/example_readouts arms=mylens bank=x3 map_prompt=claimmap-v2.9 --allow_missing limit=5
+uv run hbench run out=outputs/mylens readouts_root=outputs/example_readouts arms=mylens bank=x3 map_prompt=claimmap-v2.9 --allow_missing
+
+# 3. the report across lenses, then the index row
+uv run hbench report out=outputs/mylens bank=x3
+uv run hbench index out=outputs/mylens
+```
+
+With your own lens, point `readouts_root=` at your directory and drop `--allow_missing` (the
+example has readouts for two prompts only, which `run` otherwise refuses to score). A readouts
+file has one row per cell, all prose or all tokens:
+
+```json
+{"id": "chat-dailydialog-0000", "layer": 44, "pos": 23, "samples": ["The assistant is ...", "..."]}
+{"id": "chat-dailydialog-0000", "layer": 44, "pos": 23, "tokens": [" half", " spouse"], "scores": [9.1, 7.4]}
+```
+
+What `run` judges is chosen by these options:
+
+| you pass | what runs |
 |---|---|
-| `hbench try [family=F] [--dry_run]` | The two-question try-out above. |
-| `hbench check [name\|all]` | Gates and sanity checks: list them, or run one and get PASS / FAIL ([Checks](#checks)). |
-| `hbench run out=DIR readouts_root=R arms=a,b` | Judge arms of the main family (`eval=story` for stories, `eval=agentic_misalignment` for the agentic family). Resumable; `limit=N` for a smoke run. |
-| `hbench report out=DIR` | Cross-arm report and audit samples. |
-| `hbench index out=DIR` | The hallucination index (hindex-v8, the only index version): one row per method and layer, from the families' outputs. Nothing is re-judged. |
-| `hbench final manifest=data/index/v8_manifest.json` | Check the frozen manifest, build the index from exactly its roots, draw the final plots. |
-| `hbench calibrate split=dev` | Score the classifier against hand-labelled cases. |
+| nothing | The `main` family (chat). |
+| `eval=story` | The `story` family. |
+| `eval=agentic_misalignment` | The two agentic families (`stages=situation` for `am_situation`). |
+| `arms=a,b` | Only these lenses under `readouts_root`. |
+| `layers=20,44` | Only these layers. |
+| `limit=N` | The first N cells per lens and layer, for a smoke run. |
 
-The families with their own drivers have their own subcommands (`hbench overrefusal ...`,
-`hbench benign-roleplay ...`). Every pipeline's full command list is in
-[docs/commands.md](docs/commands.md).
+`bank=x3` and `map_prompt=claimmap-v2.9` select the chat question bank and the claim-map prompt
+the index is built on; `run`'s own defaults are older ones kept for reproducing earlier
+results. The `overrefusal`, `benign_roleplay` and `sibling` families have their own commands,
+and the full index run with every family is in [docs/commands.md](docs/commands.md). Every
+command takes `key=value` options (a boolean as `--key`); `--help` lists them and `--show`
+prints the resolved settings without running.
 
 ## Where outputs go
 
-Everything is written under `out=` (default `outputs/`, git-ignored):
+Everything is written under `out=` (default `outputs/`, git-ignored), and every command prints
+the paths it wrote.
 
 | path | what it holds |
 |---|---|
-| `<out>/<eval>/<judge model>/<arm>/cache.jsonl` | One row per judge call, so a re-run only pays for what is missing. |
-| `<out>/<eval>/<judge model>/<arm>/cells.jsonl` | Per-cell verdicts. |
-| `<out>/<eval>/<judge model>/<arm>/summary.json` | Rates, health and spend of one arm. |
-| `<out>/<eval>/<judge model>/report.md` | The cross-arm report (`report.json`, `audit_samples.md` beside it). |
+| `<out>/<eval>/<judge model>/<lens>/cache.jsonl` | One row per judge call, so a re-run only pays for what is missing. |
+| `<out>/<eval>/<judge model>/<lens>/cells.jsonl` | Per-cell verdicts. |
+| `<out>/<eval>/<judge model>/<lens>/summary.json` | Rates, health and spend of one lens. |
+| `<out>/<eval>/<judge model>/report.md` | The report across lenses (`report.json` and `audit_samples.md` beside it). |
 | `<out>/index/<judge model>/index.{json,md}` | The hallucination index. |
-| `outputs/try/<family>/` | Everything `hbench try` writes. |
+| `outputs/try/<family>/` | Everything the try-out writes. |
 
-Every command prints the paths it wrote.
+**Reading a result.** `index.md` has one row per lens and layer. `full` is the index over all
+seven families and `matched` the index without `sibling`; both stay empty until every family
+they need has been judged. The family columns give each family's percentage of hallucinated
+claims with its 95% interval. In `report.md`, the first table gives per lens the share of
+specific claims the conversation contradicts. How the index is put together:
+[docs/hallucination_index.md](docs/hallucination_index.md).
 
 ## Checks
 
 ```bash
 uv run hbench check          # list every check, what it guards and the options it takes
-uv run hbench check all      # run the 5 that need no option: a few seconds, offline, no key
+uv run hbench check all      # run the five that need no option: a few seconds, offline, no key
 uv run hbench check readouts_contract readouts=examples/readouts/wsbench_chat.jsonl
 ```
 
-Each check prints PASS or FAIL and one line of why. `check all` covers the frozen data
-manifests, the index manifest, the calibration sets, the pinned judge prompts and a dry run of
-the pipeline; it lists `readouts_contract` as SKIP because it needs a readouts file. Details
-and how to add a check: [docs/checks.md](docs/checks.md).
+`check all` covers the frozen data manifests, the index manifest, the calibration sets, the
+pinned judge prompts and a dry run of the pipeline. Each prints PASS or FAIL and one line of
+why. Details and how to add a check: [docs/checks.md](docs/checks.md). The test suite is
+`uv run pytest -q` (offline, about 10 minutes).
 
-## Results viewer
+## Viewer
 
-The results viewer lives in WorkspaceBench and reads HallucinationBench outputs too. From a
+The results viewer lives in WorkspaceBench and reads HallucinationBench outputs. From a
 [workspace-bench](https://github.com/camilablank/workspace-bench) checkout, for the try-out
-you just judged:
+judged above (`<hb>` is this checkout):
 
 ```bash
-uv run wsbench viewer ingest <this repo>/outputs/try/wsbench_chat/judged adapter=hb hb_repo=<this repo> lens=try store=/tmp/hb_viewer
-uv run wsbench viewer serve store=/tmp/hb_viewer      # http://127.0.0.1:8600
+uv sync --extra dev --extra viewer
+uv run wsbench viewer ingest <hb>/outputs/try/wsbench_chat/judged adapter=hb hb_repo=<hb> lens=try store=outputs/hb_viewer
+uv run wsbench viewer serve store=outputs/hb_viewer      # http://127.0.0.1:8600
 ```
 
-For a full run the directory is `<out>` of `hbench run`, after `hbench index out=<out>` has
-written `index/` there (the viewer reads its scores from the index; a live `hbench try` builds
-it for you). Install and the other options: `src/wsbench/viewer/README.md` in that checkout.
+For a full run, ingest the `out=` directory after `hbench index` has written `index/` there.
 
-## Score your own lens
+## The families
 
-```bash
-# readouts: <root>/<arm>/hallucination.jsonl, one row per cell (the contract above)
-uv run hbench run out=outputs/mylens readouts_root=<root> arms=mylens bank=x3 map_prompt=claimmap-v2.9 limit=5   # smoke: 5 cells per layer
-uv run hbench run out=outputs/mylens readouts_root=<root> arms=mylens bank=x3 map_prompt=claimmap-v2.9           # the whole arm; resumable
-uv run hbench report out=outputs/mylens bank=x3    # the cross-arm report
-```
+The index is a weighted mean over seven families. Each family's page states its prompts, read
+sites and judge; [docs/evals.md](docs/evals.md) lists every eval in the repo.
 
-That is the `main` family. The other families and the full index run are in
-[docs/commands.md](docs/commands.md).
+| family | weight | what it tests | prompts | page |
+|---|---|---|---|---|
+| `main` | 9 | Claims about a chat conversation the model is replying to. | 446 | [data/wsbench_chat_x3](data/wsbench_chat_x3/README.md) |
+| `am_claims` | 3 | Claims a lens makes where it mentions misalignment in an agentic scenario. | 32 | [data/agentic_misalignment](data/agentic_misalignment/README.md) |
+| `am_situation` | 3 | Readouts that misrepresent the agentic scenario as a whole. | 32 | [data/agentic_misalignment](data/agentic_misalignment/README.md) |
+| `sibling` | 1 | User modelling: a wrong value of the right kind (the user is Korean, the readout says China). | 204 | [data/sibling_probe](data/sibling_probe/README.md) |
+| `story` | 1 | Claims about a story the model is writing. | 20 | [data/story](data/story/README.md) |
+| `overrefusal` | 1 | Readouts that claim a refusal on prompts the model never refuses. | 427 | [data/overrefusal](data/overrefusal/README.md) |
+| `benign_roleplay` | 2 | Readouts that see a jailbreak in harmless role-play prompts. | 150 | [data/benign_roleplay](data/benign_roleplay/README.md) |
 
-## Families and weights
-
-The index (hindex-v8) is a weighted mean over seven families, one row per (method, layer):
-
-| family | weight | what it measures | how it runs |
-|---|---|---|---|
-| `main` | 9 | Claims about a chat conversation, on the 3x chat bank (`data/wsbench_chat_x3`). | `hbench run bank=x3` |
-| `am_claims` | 3 | Claims a lens makes at mentions of misalignment in agentic scenarios. | `hbench run eval=agentic_misalignment` |
-| `am_situation` | 3 | Readouts that misrepresent the agentic scenario as a whole. | `hbench run eval=agentic_misalignment stages=situation` |
-| `sibling` | 1 | User modelling: a same-category but wrong attribute of the user (Korean user, readout says China). | `scripts/sibling_probe/` |
-| `story` | 1 | Claims about a story the model is writing. | `hbench run eval=story` |
-| `overrefusal` | 1 | Readouts that claim a refusal on prompts the model never refuses. | `hbench overrefusal ...` |
-| `benign_roleplay` | 2 | Readouts that see a jailbreak in harmless role-play prompts. | `hbench benign-roleplay ...` |
-
-Weights sum to 20. `full` is every family; `matched` leaves out `sibling` (sum 19) for methods
-without a sibling score. hindex-v8 is the only index version, and `hbench index` and `hbench
-final` are the only commands that build it. Details and the excuse rules:
-[docs/hallucination_index.md](docs/hallucination_index.md); every eval with its plan:
-[docs/evals.md](docs/evals.md).
+Weights sum to 20. A lens without a `sibling` score is compared on `matched` (weights sum to
+19). `hbench index` builds the index from the families' outputs and judges nothing again;
+`hbench final manifest=data/index/v8_manifest.json` checks the frozen manifest of the results
+of record and rebuilds the index and its plots from exactly those outputs.
 
 ## More documentation
 
-| topic | where |
-|---|---|
-| Every eval and its plan | [docs/evals.md](docs/evals.md) |
-| The hallucination index: versions, weights, joint rows, manifests | [docs/hallucination_index.md](docs/hallucination_index.md) |
-| The claim map and the taxonomy | [docs/claim_map.md](docs/claim_map.md) |
-| Every pipeline's commands | [docs/commands.md](docs/commands.md) |
-| Judge settings and known caveats | [docs/judge_and_caveats.md](docs/judge_and_caveats.md) |
-| Judge backends: live calls or Message Batches, sizing concurrency | [docs/judge_backends.md](docs/judge_backends.md) |
-| Gates and sanity checks | [docs/checks.md](docs/checks.md) |
-| Results of record (frozen hindex-v8) | [docs/results/0029_index_v8.md](docs/results/0029_index_v8.md), every row: [0029_index_v8_full.md](docs/results/0029_index_v8_full.md); figures in [`plots/final/`](plots/final/) |
-| Design history | `plans/` (this repo supersedes the archived `camilablank/hallucination-bench-v1`; WorkspaceBench's hallucination eval is the main family here) |
-| Conventions for contributors and agents | [CLAUDE.md](CLAUDE.md) |
+- [docs/evals.md](docs/evals.md): every eval in the repo.
+- [docs/hallucination_index.md](docs/hallucination_index.md): weights, joint rows, excuse rules, manifests.
+- [docs/claim_map.md](docs/claim_map.md): the claim map and its taxonomy.
+- [docs/commands.md](docs/commands.md): every pipeline's commands.
+- [docs/judge_and_caveats.md](docs/judge_and_caveats.md): judge settings and known caveats.
+- [docs/judge_backends.md](docs/judge_backends.md): live calls or Message Batches, sizing concurrency.
+- [docs/checks.md](docs/checks.md): the checks and how to add one.
+- [docs/results/0029_index_v8.md](docs/results/0029_index_v8.md): the results of record ([every row](docs/results/0029_index_v8_full.md)); figures in [`plots/final/`](plots/final/).
+- [CLAUDE.md](CLAUDE.md): conventions for contributors and agents.
+- `plans/`: the design history.
 
 ## Credits
 

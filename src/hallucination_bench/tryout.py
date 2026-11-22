@@ -14,7 +14,7 @@ from hallucination_bench.llm import CallResult
 EXAMPLES = REPO_ROOT / "examples" / "readouts"
 FAMILIES = ("wsbench_chat", "story")  # the families `hbench run --eval` judges with one driver
 ARM = "try"
-MAP_PROMPT = "claimmap-v2.9"  # the claim-map prompt of record (hindex-v8), not `run`'s default
+MAP_PROMPT = "claimmap-v2.9"  # the claim-map prompt of record, not `run`'s default
 LIVE_ATTEMPTS = 3  # a live try re-asks failed calls (exit 4) this many passes in all
 TEXT_CHARS = 240
 PROMPT_LINES = 12

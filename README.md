@@ -82,11 +82,11 @@ mkdir -p outputs/example_readouts/mylens
 cp examples/readouts/wsbench_chat.jsonl outputs/example_readouts/mylens/hallucination.jsonl
 
 # 2. judge: a few cells first, then the whole file (resumable: a re-run pays for what is missing)
-uv run hbench run out=outputs/mylens readouts_root=outputs/example_readouts arms=mylens bank=x3 map_prompt=claimmap-v2.9 --allow_missing limit=5
-uv run hbench run out=outputs/mylens readouts_root=outputs/example_readouts arms=mylens bank=x3 map_prompt=claimmap-v2.9 --allow_missing
+uv run hbench run out=outputs/mylens readouts_root=outputs/example_readouts arms=mylens bank=main map_prompt=current --allow_missing limit=5
+uv run hbench run out=outputs/mylens readouts_root=outputs/example_readouts arms=mylens bank=main map_prompt=current --allow_missing
 
 # 3. the report across lenses, then the index row
-uv run hbench report out=outputs/mylens bank=x3
+uv run hbench report out=outputs/mylens bank=main
 uv run hbench index out=outputs/mylens
 ```
 
@@ -110,9 +110,9 @@ What `run` judges is chosen by these options:
 | `layers=20,44` | Only these layers. |
 | `limit=N` | The first N cells per lens and layer, for a smoke run. |
 
-`bank=x3` and `map_prompt=claimmap-v2.9` select the chat question bank and the claim-map prompt
-the index is built on; `run`'s own defaults are older ones kept for reproducing earlier
-results. The `overrefusal`, `benign_roleplay` and `sibling` families have their own commands,
+`bank=main` and `map_prompt=current` select the chat question bank and the claim-map prompt
+the index is built on; without them `run` uses other defaults, kept for reproducing other
+results. Both are names for the underlying values, which is what a run records. The `overrefusal`, `benign_roleplay` and `sibling` families have their own commands,
 and the full index run with every family is in [docs/commands.md](docs/commands.md). Every
 command takes `key=value` options (a boolean as `--key`); `--help` lists them and `--show`
 prints the resolved settings without running.
@@ -186,8 +186,8 @@ All 7 families are in the index; the weights sum to 20.
 
 A lens without a `sibling` score is compared on `matched`, the index without that family.
 `hbench index` builds the index from the families' outputs and judges nothing again; `hbench
-final manifest=data/index/v8_manifest.json` checks the frozen manifest of the results of record
-and rebuilds the index and its plots from exactly those outputs.
+final` checks [the index manifest](data/index/v8_manifest.json), the frozen record of the
+results of record, and rebuilds the index and its plots from exactly those outputs.
 
 ## The taxonomy
 

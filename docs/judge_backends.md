@@ -76,7 +76,7 @@ hardcoded anywhere in the package. Size them to the account, not to a habit:
    on the account, must stay under it.
 3. Keep `rpm=` above `concurrency x 60 / seconds per call`, or the pacer becomes the limit.
 
-Measured on the x3 main bank with `claude-opus-5-5` (2026-11-20, 50 map + 50 verifier calls,
+Measured on the x3 main bank with `claude-opus-5-5` (50 map + 50 verifier calls,
 0 retries and 0 rate-limit errors at either setting):
 
 | call | uncached input | cached input | output | seconds |

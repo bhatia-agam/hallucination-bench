@@ -1,6 +1,6 @@
 # Commands
 
-Every pipeline's commands, as run for the results of record. Start with `hbench try` in the [README](../README.md#try-it-in-a-minute).
+Every pipeline's commands, as run for the results of record. Start with `hbench try` in the [README](../README.md#try-it-on-two-prompts).
 
 Options are `key=value` and a boolean is `--key` (every command is a pydra config: `--show` prints
 the resolved config, `--help` lists the keys). The old `--some-flag value` spelling still works.

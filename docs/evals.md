@@ -1,6 +1,6 @@
 # Evals
 
-Every eval in the repo, with its plan. The families that make up the index and their weights are in the [README](../README.md#families-and-weights).
+Every eval in the repo, with its plan. The families that make up the index and their weights are in the [README](../README.md#the-families).
 
 | eval | what it measures | plan |
 |---|---|---|

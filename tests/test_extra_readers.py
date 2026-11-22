@@ -1,5 +1,5 @@
 """``$HBENCH_EXTRA_READERS`` / ``readers.add``: extra reader names on every allow-list, none by
-default (the lists a monkeypatch used to extend: index, both safety exports, benign_roleplay)."""
+default (every list that holds them: index, both safety exports, benign_roleplay)."""
 
 import json
 from pathlib import Path

@@ -11,7 +11,7 @@ Exit code: 0 = PASS, 1 = FAIL or a usage error (unknown check, missing or unknow
 | check | what it guards | options |
 |---|---|---|
 | `bank_manifests` | Every frozen data set under `data/` is byte-identical to its `MANIFEST.sha256`. | |
-| `index_manifest` | `data/index/v8_manifest.json` names the shipped x3 bank and judge versions that are still registered. | |
+| `index_manifest` | The index manifest (in `data/index/`) names the shipped chat bank and judge prompts that are still registered. | |
 | `calibration_sets` | The calibration case files under `data/calibration/` are present and parse. | |
 | `judge_prompts` | The frozen judge prompts and schemas still hash to their pinned values (`tests/test_registry_pins.py`, `tests/test_v5c_frozen.py`). One test compares against a workspace-bench clone (`$HBENCH_WSBENCH_PUB`) and skips without it; the PASS line then says what was not checked. | |
 | `readouts_contract` | A readouts file parses under the contract: no malformed, duplicate or mixed-kind rows. | `readouts=FILE` |

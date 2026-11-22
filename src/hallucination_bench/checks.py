@@ -162,8 +162,8 @@ def index_manifest() -> Outcome:
     if manifest["excuse_verifier"] not in cv.VERSIONS:
         return False, f"excuse verifier {manifest['excuse_verifier']} is not in the registry"
     return True, (
-        f"{manifest['index_version']}: scored on the frozen x3 bank, with "
-        f"{prov['versions']['claim_map']} and {manifest['excuse_verifier']} both registered"
+        "the index manifest was scored on the shipped chat bank, and its claim-map prompt and "
+        "continuation verifier are both registered"
     )
 
 
@@ -223,7 +223,7 @@ register_check(
 )
 register_check(
     "index_manifest",
-    "The frozen index manifest names the shipped x3 bank and registered judge versions.",
+    "The frozen index manifest names the shipped chat bank and registered judge prompts.",
     f"{_HERE}:index_manifest",
 )
 register_check(

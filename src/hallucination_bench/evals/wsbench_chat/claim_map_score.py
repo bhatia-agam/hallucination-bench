@@ -1,7 +1,7 @@
-"""Claim-map (taxonomy v2) metrics: character-weighted shares, readout-level rates,
+"""Claim-map metrics: character-weighted shares, readout-level rates,
 comparisons with v5c / verify, health; item-bootstrap 95% CIs (plan 0002, §Metrics).
 
-The headline is the **verdict layer** (plan rev 13, ``taxonomy_v2.VERDICTS``): verdict shares
+The headline is the **verdict layer** (plan rev 13, ``claim_map_taxonomy.VERDICTS``): verdict shares
 (character-weighted) and readout-level verdict rates; leaves and groups are the breakdown.
 
 Which readouts count:
@@ -31,14 +31,14 @@ from typing import Any
 
 import numpy as np
 
-from hallucination_bench import taxonomy_v2 as tx
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges.v5c import SPECIFIC_CLASSES
 from hallucination_bench.units import locate
 
-from . import score
+from . import span_score
 
-N_BOOT = score.N_BOOT
+N_BOOT = span_score.N_BOOT
 LEAF_ROWS: tuple[str, ...] = tx.ALL_LEAVES  # 20 leaves + unknown_incorrect + failed
 GROUP_ROWS: tuple[str, ...] = tx.ROWS  # 8 groups + unknown_incorrect + failed
 VERDICT_ROWS: tuple[str, ...] = tx.VERDICT_ROWS  # 6 verdicts + failed
@@ -336,7 +336,7 @@ def readout_vector(r: SlimReadoutV2, version: str | None = None) -> np.ndarray:
 
 @lru_cache(maxsize=8)
 def _boot(n_items: int, n_boot: int) -> np.ndarray:
-    return score.bootstrap_indices(n_items, n_boot)
+    return span_score.bootstrap_indices(n_items, n_boot)
 
 
 def ratios(
@@ -361,7 +361,7 @@ def _rate(
     totals: dict[str, float], draws: Any, num: str, den: str, col: dict[str, int] = _COL
 ) -> dict[str, Any]:
     d = totals[den]
-    ci = score._ci(draws[:, col[num]], draws[:, col[den]]) if draws is not None else None
+    ci = span_score._ci(draws[:, col[num]], draws[:, col[den]]) if draws is not None else None
     return {"value": totals[num] / d if d else None, "n": int(d), "ci95": ci}
 
 

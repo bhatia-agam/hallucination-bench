@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import pytest
 
-from hallucination_bench.evals.wsbench_chat import score as sc
+from hallucination_bench.evals.wsbench_chat import span_score as sc
 
 
 def sp(g, typ, sev=2, uk=None, idx=0, target="entity"):

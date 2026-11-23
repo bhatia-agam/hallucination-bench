@@ -177,10 +177,6 @@ def _bullets(xs: tuple[str, ...]) -> str:
     return "\n".join(f"- {x}{'.' if i == last else ';'}" for i, x in enumerate(xs))
 
 
-def render_not_mentions() -> str:
-    return _bullets(NOT_MENTIONS)
-
-
 def render_rulebook() -> str:
     """The full v2 rulebook (mentions, not mentions, actor and stance rules) as Markdown."""
     return (

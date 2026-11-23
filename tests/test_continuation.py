@@ -5,14 +5,14 @@ offset of main / story and AM, and how the new leaf scores."""
 import json
 
 import pytest
-from test_claimmap_v2 import e, sp
+from test_claim_map import e, sp
 
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench import index as ix
-from hallucination_bench import taxonomy_v2 as tx
 from hallucination_bench.evals.agentic_misalignment import bank as am_bank
 from hallucination_bench.evals.agentic_misalignment import run as amrun
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 V28 = "claimmap-v2.8"

@@ -24,8 +24,8 @@ from hallucination_bench import cli
 from hallucination_bench.evals.agentic_misalignment import bank, detect, intent, situation
 from hallucination_bench.evals.agentic_misalignment import run as amrun
 from hallucination_bench.evals.wsbench_chat.run import Models
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import claimmap_am as cam
-from hallucination_bench.judges import claimmap_v2 as cm
 from hallucination_bench.llm import CallResult, JudgeConfigError, Usage
 
 V28 = "claimmap-v2.8"

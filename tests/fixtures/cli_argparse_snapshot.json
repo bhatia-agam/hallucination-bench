@@ -1986,6 +1986,11 @@
    "per_stratum": 3,
    "seed": 0
   },
+  "plan": {
+   "families": "main,story,agentic_misalignment,overrefusal,benign_roleplay",
+   "layers": null,
+   "out": "outputs/plan"
+  },
   "report": {
    "audit_n": null,
    "audit_verdict_n": 20,

@@ -55,6 +55,7 @@ EVAL_CLIS: list[str] = [
     "hallucination_bench.evals.overrefusal.cli",  # plan 0015
     "hallucination_bench.evals.benign_roleplay.cli",  # plan 0023
     "hallucination_bench.checks",  # gates and sanity checks (`hbench check`)
+    "hallucination_bench.readplan",  # `hbench plan`: the index families' read plan
 ]
 
 

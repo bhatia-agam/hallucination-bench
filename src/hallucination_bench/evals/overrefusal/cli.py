@@ -1,17 +1,21 @@
 """``hbench overrefusal candidates|judge-gt|bank|run|report|...|offtopic-export`` (plan 0015;
 plan 0022: ``offtopic-export``), registered through
-``hallucination_bench.cli.EVAL_CLIS`` (plan 0012 D2)."""
+``hallucination_bench.cli.EVAL_CLIS`` (plan 0012 D2). Each subcommand is a pydra config
+(``command.Command``)."""
 
-import argparse
 import json
 import os
 import sys
 from pathlib import Path
 
+import pydra
+
+from hallucination_bench.command import Command, boolean, choice, integer, number, optional, text
+
 DEFAULT_MODEL = "claude-opus-5-5"
 
 
-def _readouts_root(args: argparse.Namespace) -> Path:
+def _readouts_root(args: Command) -> Path:
     return Path(
         args.readouts_root
         or os.environ.get("HBENCH_OR_READOUTS")
@@ -19,14 +23,14 @@ def _readouts_root(args: argparse.Namespace) -> Path:
     )
 
 
-def cmd_candidates(args: argparse.Namespace) -> int:
+def cmd_candidates(args: Command) -> int:
     from . import data
 
     print(json.dumps(data.build_candidates(args.n_hard, args.n_toxic, args.seed), indent=1))
     return 0
 
 
-def cmd_judge_gt(args: argparse.Namespace) -> int:
+def cmd_judge_gt(args: Command) -> int:
     from . import run
 
     out = Path(args.out)
@@ -48,7 +52,7 @@ def cmd_judge_gt(args: argparse.Namespace) -> int:
     return 4 if res["n_failed"] else 0
 
 
-def cmd_bank(args: argparse.Namespace) -> int:
+def cmd_bank(args: Command) -> int:
     from transformers import AutoTokenizer
 
     from . import data
@@ -73,7 +77,7 @@ def cmd_bank(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_run(args: argparse.Namespace) -> int:
+def cmd_run(args: Command) -> int:
     from hallucination_bench.llm import JudgeConfigError
 
     from . import run
@@ -111,7 +115,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 4 if nf else 0
 
 
-def cmd_report(args: argparse.Namespace) -> int:
+def cmd_report(args: Command) -> int:
     from . import report
 
     root = report.report(
@@ -134,7 +138,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_probe_data(args: argparse.Namespace) -> int:
+def cmd_probe_data(args: Command) -> int:
     from . import probe_data
 
     if args.step == "80k":
@@ -147,7 +151,7 @@ def cmd_probe_data(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_probe_report(args: argparse.Namespace) -> int:
+def cmd_probe_report(args: Command) -> int:
     from . import probe_report
 
     arms = args.arms.split(",") if args.arms else ["s3d-rl600", "mlnla-rl600-all11", "jlens"]
@@ -156,7 +160,7 @@ def cmd_probe_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_grow(args: argparse.Namespace) -> int:
+def cmd_grow(args: Command) -> int:
     from . import grow
 
     if args.step == "candidates":
@@ -177,7 +181,7 @@ def cmd_grow(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_freeze(args: argparse.Namespace) -> int:
+def cmd_freeze(args: Command) -> int:
     from . import data
 
     doc = json.loads(data.ITEMS.read_text())
@@ -191,7 +195,7 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_wsb_export(args: argparse.Namespace) -> int:
+def cmd_wsb_export(args: Command) -> int:
     from . import wsb_export
 
     res = wsb_export.export(Path(args.out), args.judge_model, Path(args.family_dir))
@@ -199,7 +203,7 @@ def cmd_wsb_export(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_offtopic_export(args: argparse.Namespace) -> int:
+def cmd_offtopic_export(args: Command) -> int:
     from . import offtopic_export
 
     if getattr(args, "joint", False):  # plan 0029: the joint rows beside the per-layer ones
@@ -210,88 +214,180 @@ def cmd_offtopic_export(args: argparse.Namespace) -> int:
     return 0
 
 
-def register(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("overrefusal", help="plan 0015: OR-Bench over-refusal eval")
-    osub = p.add_subparsers(dest="or_cmd", required=True)
+def judge_keys(c: Command) -> None:
+    c.key("out", "outputs", text, "output root")
+    c.key("judge_model", DEFAULT_MODEL, text, "the judge model; it also names the output dir")
+    c.key("rpm", 1000.0, number, "requests per minute")
+    c.key("concurrency", 96, integer, "judge calls in flight at once")
+    c.key("limit", None, optional(integer), "smoke: at most N calls / cells")
 
-    c = osub.add_parser(
-        "candidates", help="Stage 0: pinned OR-Bench -> data/overrefusal/candidates.jsonl"
+
+def report_keys(c: Command, judge_model: str = DEFAULT_MODEL, out: str = "output root") -> None:
+    c.key("out", "outputs", text, out)
+    c.key("judge_model", judge_model, text, "the judge model whose outputs are read")
+
+
+class Candidates(Command):
+    about = "Stage 0: pinned OR-Bench -> data/overrefusal/candidates.jsonl"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("n_hard", 400, integer, "candidates from the hard config")
+        self.key("n_toxic", 150, integer, "candidates from the toxic config")
+        self.key("seed", 0, integer, "seed of the draw")
+
+    def execute(self) -> int:
+        return cmd_candidates(self)
+
+
+class JudgeGt(Command):
+    about = "Stage 2: refusal labels (orgt-v1) -> gt_labels.jsonl"
+
+    def __init__(self) -> None:
+        super().__init__()
+        judge_keys(self)
+        self.key("candidates", "", text, "rev 5: another candidates file (80k sample)")
+        self.key("samples", "", text, "rev 5: its samples file")
+        self.key("labels_out", "", text, "rev 5: where its labels go")
+        self.key("greedy", "", text, "rev 7: its greedy samples file")
+
+    def execute(self) -> int:
+        return cmd_judge_gt(self)
+
+
+class Bank(Command):
+    about = "Stage 3: populations + items.json + capture_rows.json"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("n_never", 150, integer, "never_refused prompts to keep")
+        self.key("n_hard_refused", 50, integer, "hard_refused prompts to keep")
+        self.key("n_always", 50, integer, "always_refused prompts to keep")
+
+    def execute(self) -> int:
+        return cmd_bank(self)
+
+
+class Run(Command):
+    about = "Stages 5-6: detector + verifier"
+
+    def __init__(self) -> None:
+        super().__init__()
+        judge_keys(self)
+        self.key("readouts_root", None, optional(text), "default $HBENCH_OR_READOUTS")
+        self.key("arms", "", text, "comma-separated arm names (default: every arm in the root)")
+        self.key("layers", "", text, "comma-separated layers (default: all)")
+        self.key("stages", "detect,verify", text, "comma-separated stages to run")
+
+    def execute(self) -> int:
+        return cmd_run(self)
+
+
+class Grow(Command):
+    about = "rev 7: 80k2 candidates | append new items to the bank"
+    positional = "step"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("step", pydra.REQUIRED, choice("candidates", "bank", "pairs"), "which step")
+
+    def execute(self) -> int:
+        return cmd_grow(self)
+
+
+class WsbExport(Command):
+    about = "rev 8: WorkspaceBench refusal-prediction family"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("family_dir", pydra.REQUIRED, text, "the WorkspaceBench family dir to write")
+        report_keys(self, "claude-sonnet-5-5")
+
+    def execute(self) -> int:
+        return cmd_wsb_export(self)
+
+
+class OfftopicExport(Command):
+    about = "plan 0022: wrong-topic refusal claims -> offtopic_index/ (hindex-v6 overrefusal)"
+
+    def __init__(self) -> None:
+        super().__init__()
+        report_keys(self, out="reads <out>/overrefusal/<model>/")
+        self.key(
+            "joint",
+            False,
+            boolean,
+            "plan 0029: sj_records_joint.jsonl (sj_run.py --joint) -> "
+            "offtopic_index/index_counts_joint.jsonl (the hindex-v8 joint overrefusal rows)",
+        )
+
+    def execute(self) -> int:
+        return cmd_offtopic_export(self)
+
+
+class Freeze(Command):
+    about = "rev 8: mark items.json frozen + MANIFEST.sha256"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("date", "2026-10-28", text, "the freeze date written to items.json")
+
+    def execute(self) -> int:
+        return cmd_freeze(self)
+
+
+class ProbeData(Command):
+    about = "rev 5: probe training data (80k sample | texts)"
+    positional = "step"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("step", pydra.REQUIRED, choice("80k", "texts", "calib"), "which step")
+
+    def execute(self) -> int:
+        return cmd_probe_data(self)
+
+
+class ProbeReport(Command):
+    about = "rev 5: probe validity, premise, tagging, misses"
+
+    def __init__(self) -> None:
+        super().__init__()
+        report_keys(self, "claude-sonnet-5-5")
+        self.key("arms", "", text, "comma-separated arm names (default: the three paper arms)")
+
+    def execute(self) -> int:
+        return cmd_probe_report(self)
+
+
+class Report(Command):
+    about = "Stage 7: report.md / report.json / examples.jsonl"
+
+    def __init__(self) -> None:
+        super().__init__()
+        report_keys(self)
+        self.key("readouts_root", None, optional(text), "default $HBENCH_OR_READOUTS")
+        self.key("arms", "", text, "comma-separated arm names (default: every arm in the root)")
+
+    def execute(self) -> int:
+        return cmd_report(self)
+
+
+COMMANDS = {
+    "overrefusal": (
+        "plan 0015: OR-Bench over-refusal eval",
+        {
+            "candidates": Candidates,
+            "judge-gt": JudgeGt,
+            "bank": Bank,
+            "run": Run,
+            "grow": Grow,
+            "wsb-export": WsbExport,
+            "offtopic-export": OfftopicExport,
+            "freeze": Freeze,
+            "probe-data": ProbeData,
+            "probe-report": ProbeReport,
+            "report": Report,
+        },
     )
-    c.add_argument("--n-hard", type=int, default=400)
-    c.add_argument("--n-toxic", type=int, default=150)
-    c.add_argument("--seed", type=int, default=0)
-    c.set_defaults(fn=cmd_candidates)
-
-    def common(q: argparse.ArgumentParser) -> None:
-        q.add_argument("--out", default="outputs")
-        q.add_argument("--judge-model", default=DEFAULT_MODEL)
-        q.add_argument("--rpm", type=float, default=1000.0)
-        q.add_argument("--concurrency", type=int, default=96)
-        q.add_argument("--limit", type=int, default=None, help="smoke: at most N calls / cells")
-
-    g = osub.add_parser("judge-gt", help="Stage 2: refusal labels (orgt-v1) -> gt_labels.jsonl")
-    common(g)
-    g.add_argument("--candidates", default="", help="rev 5: another candidates file (80k sample)")
-    g.add_argument("--samples", default="", help="rev 5: its samples file")
-    g.add_argument("--labels-out", default="", help="rev 5: where its labels go")
-    g.add_argument("--greedy", default="", help="rev 7: its greedy samples file")
-    g.set_defaults(fn=cmd_judge_gt)
-
-    b = osub.add_parser("bank", help="Stage 3: populations + items.json + capture_rows.json")
-    b.add_argument("--n-never", type=int, default=150)
-    b.add_argument("--n-hard-refused", type=int, default=50)
-    b.add_argument("--n-always", type=int, default=50)
-    b.set_defaults(fn=cmd_bank)
-
-    r = osub.add_parser("run", help="Stages 5-6: detector + verifier")
-    common(r)
-    r.add_argument("--readouts-root", default=None, help="default $HBENCH_OR_READOUTS")
-    r.add_argument("--arms", default="")
-    r.add_argument("--layers", default="")
-    r.add_argument("--stages", default="detect,verify")
-    r.set_defaults(fn=cmd_run)
-
-    gw = osub.add_parser("grow", help="rev 7: 80k2 candidates | append new items to the bank")
-    gw.add_argument("step", choices=["candidates", "bank", "pairs"])
-    gw.set_defaults(fn=cmd_grow)
-
-    wx = osub.add_parser("wsb-export", help="rev 8: WorkspaceBench refusal-prediction family")
-    wx.add_argument("--family-dir", required=True)
-    wx.add_argument("--out", default="outputs")
-    wx.add_argument("--judge-model", default="claude-sonnet-5-5")
-    wx.set_defaults(fn=cmd_wsb_export)
-
-    ox = osub.add_parser(
-        "offtopic-export",
-        help="plan 0022: wrong-topic refusal claims -> offtopic_index/ (hindex-v6 overrefusal)",
-    )
-    ox.add_argument("--out", default="outputs", help="reads <out>/overrefusal/<model>/")
-    ox.add_argument("--judge-model", default=DEFAULT_MODEL)
-    ox.add_argument(
-        "--joint",
-        action="store_true",
-        help="plan 0029: sj_records_joint.jsonl (sj_run.py --joint) -> "
-        "offtopic_index/index_counts_joint.jsonl (the hindex-v8 joint overrefusal rows)",
-    )
-    ox.set_defaults(fn=cmd_offtopic_export)
-
-    fz = osub.add_parser("freeze", help="rev 8: mark items.json frozen + MANIFEST.sha256")
-    fz.add_argument("--date", default="2026-10-28")
-    fz.set_defaults(fn=cmd_freeze)
-
-    pd = osub.add_parser("probe-data", help="rev 5: probe training data (80k sample | texts)")
-    pd.add_argument("step", choices=["80k", "texts", "calib"])
-    pd.set_defaults(fn=cmd_probe_data)
-
-    pr = osub.add_parser("probe-report", help="rev 5: probe validity, premise, tagging, misses")
-    pr.add_argument("--out", default="outputs")
-    pr.add_argument("--judge-model", default="claude-sonnet-5-5")
-    pr.add_argument("--arms", default="")
-    pr.set_defaults(fn=cmd_probe_report)
-
-    rp = osub.add_parser("report", help="Stage 7: report.md / report.json / examples.jsonl")
-    rp.add_argument("--out", default="outputs")
-    rp.add_argument("--judge-model", default=DEFAULT_MODEL)
-    rp.add_argument("--readouts-root", default=None)
-    rp.add_argument("--arms", default="")
-    rp.set_defaults(fn=cmd_report)
+}

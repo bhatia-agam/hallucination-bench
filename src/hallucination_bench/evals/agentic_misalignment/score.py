@@ -3,9 +3,10 @@
 Per located mention (readout ``r``, span ``[s, e)``), all in code (no calls):
 
 * :func:`mention_verdict`: the map segments of readout ``r`` overlapping the span, weighted by
-  character overlap; the verdict is the majority over ``taxonomy_v2.VERDICT_OF[leaf]`` (ties to
-  the more severe verdict, :data:`SEVERITY`), the leaf the plurality leaf inside it (ties by
-  ``taxonomy_v2.VERDICTS`` order), the tags from the largest-overlap segment with that leaf;
+  character overlap; the verdict is the majority over ``claim_map_taxonomy.VERDICT_OF[leaf]``
+  (ties to the more severe verdict, :data:`SEVERITY`), the leaf the plurality leaf inside it
+  (ties by
+  ``claim_map_taxonomy.VERDICTS`` order), the tags from the largest-overlap segment with that leaf;
 * :func:`evidence_region`: where the located ``supported_by`` (correct) / ``contradicted_by``
   (hallucination, probe candidate) quote falls: ``prompt_before`` / ``prompt_after`` /
   ``response`` (or ``entailed``, ``world``, ``none``);
@@ -43,9 +44,9 @@ from typing import Any
 
 import numpy as np
 
-from hallucination_bench import taxonomy_v2 as tx
-from hallucination_bench.evals.wsbench_chat import score as chat_score
-from hallucination_bench.evals.wsbench_chat.score_v2 import hedged_origin
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.evals.wsbench_chat import span_score as chat_score
+from hallucination_bench.evals.wsbench_chat.claim_map_score import hedged_origin
 from hallucination_bench.units import Normalised
 
 from . import kinds as K

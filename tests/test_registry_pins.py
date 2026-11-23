@@ -5,9 +5,9 @@ unchanged for every v3-v7 root."""
 import hashlib
 import json
 
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import claimmap_am as cam
-from hallucination_bench.judges import claimmap_v2 as cm
 
 # recorded from the unmodified code (main @ 4034b31) before any plan-0029 edit
 PINS = {

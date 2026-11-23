@@ -18,14 +18,14 @@ from test_continuation import CONV, OFF, _units
 from test_joint import _readouts
 from test_v29_continuation import V28, V29, Map29Fake, ct9
 
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench import cli, final
 from hallucination_bench import index as ix
-from hallucination_bench import taxonomy_v2 as tx
 from hallucination_bench.cache import Cache, fingerprint
 from hallucination_bench.evals.agentic_misalignment import run as amrun
+from hallucination_bench.evals.wsbench_chat import claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat import score_v2
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import continuation_verifier as cv
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.llm import LLM, CallResult, JudgeConfigError, Usage
@@ -179,7 +179,7 @@ def test_fields_counts_and_guards():
     with pytest.raises(ValueError, match="excuse_verdicts"):
         cm.parse(raw8, units, CONV, read_offset=OFF, version=V28, excuse_verdicts={})
     assert cm.extra_parse_counts(V28, CV1) == cm.PARSE_COUNTS_V28_EXTRA
-    assert score_v2.health_keys(V29, CV1)[-len(cm.PARSE_COUNTS_VERIFIER_EXTRA) :] == (
+    assert claim_map_score.health_keys(V29, CV1)[-len(cm.PARSE_COUNTS_VERIFIER_EXTRA) :] == (
         cm.PARSE_COUNTS_VERIFIER_EXTRA
     )
     m = wrun.Models(eval="agentic_misalignment", map_prompt=V29, excuse_verifier=CV1)
@@ -834,7 +834,7 @@ def test_readout_window_unmarked_segment_is_counted(tmp_path):
     """Known limitation: a stray ``<<< ... >>>`` early in a long readout anchors build()'s
     window on the wrong marker and cuts the marked segment out; counted, not fixed."""
     assert "n_verifier_segment_unmarked" in cm.PARSE_COUNTS_VERIFIER_EXTRA
-    assert "n_verifier_segment_unmarked" in score_v2.health_keys(V29, CV1)
+    assert "n_verifier_segment_unmarked" in claim_map_score.health_keys(V29, CV1)
     item = {"prompt": "P", "response": "hello there", "sites": [{"pos": 7, "char": 5}]}
     ro = "intro <<<stray>>> " + "x" * 3000 + " SEGTEXT tail"
     start = ro.index("SEGTEXT")

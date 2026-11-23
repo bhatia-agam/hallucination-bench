@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 
 [[package]]
@@ -159,6 +159,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dill"
+version = "0.3.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/43/86fe3f9e130c4137b0f1b50784dd70a5087b911fe07fa81e53e0c4c47fea/dill-0.3.9.tar.gz", hash = "sha256:81aa267dddf68cbfe8029c42ca9ec6a4ab3b22371d1c450abc54422577b4512c", size = 187000, upload-time = "2024-09-29T00:03:20.958Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/d1/e73b6ad76f0b1fb7f23c35c6d95dbc506a9c8804f43dda8cb5b0fa6331fd/dill-0.3.9-py3-none-any.whl", hash = "sha256:468dff3b89520b474c0397703366b7b95eebe6303f108adf9b19da1f702be87a", size = 119418, upload-time = "2024-09-29T00:03:19.344Z" },
+]
+
+[[package]]
 name = "docstring-parser"
 version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -255,10 +264,12 @@ wheels = [
 name = "hallucination-bench"
 version = "0.1.0"
 source = { editable = "." }
+default-groups = ["dev", "sibling"]
 dependencies = [
     { name = "anthropic" },
     { name = "numpy" },
     { name = "openai" },
+    { name = "pydra-config" },
 ]
 
 [package.dev-dependencies]
@@ -277,6 +288,7 @@ requires-dist = [
     { name = "anthropic", specifier = ">=0.70" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "openai", specifier = ">=1.50" },
+    { name = "pydra-config", specifier = ">=0.0.17" },
 ]
 
 [package.metadata.requires-dev]
@@ -1101,6 +1113,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/61/8c/b81c4139bff6305e7a98fa7845a99e05df1461d3c33d0fef417e02114ae7/pydantic_core-2.50.0-graalpy312-graalpy250_312_native-macosx_11_0_arm64.whl", hash = "sha256:732efbb50977ab7cf18f01d4c255834aeb14cb2425459f7bff681a1ba3a4ffa1", size = 2039121, upload-time = "2026-10-08T14:30:26.423Z" },
     { url = "https://files.pythonhosted.org/packages/0f/49/679293741809cf835290bccf80216aebfcf5d94cb84a34709f18b21abfd5/pydantic_core-2.50.0-graalpy312-graalpy250_312_native-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ad9185366893714cd4514ae5e1a098227704fa395cb41a7855d75968ecedc826", size = 2109280, upload-time = "2026-10-08T14:30:29.216Z" },
     { url = "https://files.pythonhosted.org/packages/f5/49/76f167aec9b9d77a82e38131539ca6c6fcf69d720965f76eda20b87b454d/pydantic_core-2.50.0-graalpy312-graalpy250_312_native-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0def1dc09802a790e4a1b3cbc4401f0b53c58f273ce3671df9867f7bdf1fbe20", size = 2269313, upload-time = "2026-10-08T14:30:32.096Z" },
+]
+
+[[package]]
+name = "pydra-config"
+version = "0.0.17.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dill" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/33/f85fda915ce9b64d71c7369906006d4e1ce64589b427d92eaa8700ac5a99/pydra_config-0.0.17.post1.tar.gz", hash = "sha256:ebbf5ed51e17e69f791688e3f743b610ce949d8847678558c4dbb775c186efb0", size = 17502, upload-time = "2025-07-01T22:45:43.785Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/9a/8433a88a0a3a4cec9234d1aceebb1e929407c5337cfb30ebde971a8dfbd3/pydra_config-0.0.17.post1-py3-none-any.whl", hash = "sha256:08ddeffc98a127862ea1118a8d60a4811619f295430ffebc840d07362787db12", size = 11254, upload-time = "2025-07-01T22:45:42.692Z" },
 ]
 
 [[package]]

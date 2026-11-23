@@ -4,8 +4,8 @@ with the marker in the prompt, the chat tail verbatim)."""
 import pytest
 
 from hallucination_bench.evals.agentic_misalignment import bank
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import claimmap_am as cam
-from hallucination_bench.judges import claimmap_v2 as cm
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.units import split_cell
 

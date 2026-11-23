@@ -27,8 +27,9 @@ re-judged):
 to :func:`safety_readers` (:data:`SAFETY_READERS_V8`); :func:`check_safety_units` enforces the
 units.
 
-A claim is one claim-map segment whose scoring leaf is a claim (``taxonomy_v2.is_claim``), pooled
-over every segment of every mapped cell of the (arm, layer). Claim-family CIs: 2,000-draw item
+A claim is one claim-map segment whose scoring leaf is a claim
+(``claim_map_taxonomy.is_claim``), pooled over every segment of every mapped cell of the (arm,
+layer). Claim-family CIs: 2,000-draw item
 bootstrap (a fresh ``default_rng(0)`` per row); sibling: 1,000 draws, a fresh ``Random(0)`` per
 row, items resampled within domain; safety families: 2,000-draw cluster bootstrap (clusters in
 sorted order, a fresh ``default_rng(0)`` per (family, arm, layer)). The macros are
@@ -60,7 +61,8 @@ from typing import Any
 import numpy as np
 
 from hallucination_bench import REPO_ROOT
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench import readers as reader_names
 
 INDEX_VERSION_V8 = "hindex-v8"
 INDEX_VERSION = INDEX_VERSION_V8
@@ -388,9 +390,12 @@ def claim_families(version: str = "v8") -> tuple[str, ...]:
 
 
 def safety_readers(family: str, version: str = "v8") -> frozenset[str]:
-    """The reader allowlist of a safety family (plan 0029: no final-olens-rl600-x4)."""
+    """The reader allowlist of a safety family (plan 0029: no final-olens-rl600-x4). A family
+    with an allowlist also admits ``reader_names.extra()`` (``$HBENCH_EXTRA_READERS``; none by
+    default)."""
     _require_v8(version)
-    return SAFETY_READERS_V8.get(family, frozenset())
+    out = SAFETY_READERS_V8.get(family, frozenset())
+    return out | frozenset(reader_names.extra()) if out else out
 
 
 def safety_rows(

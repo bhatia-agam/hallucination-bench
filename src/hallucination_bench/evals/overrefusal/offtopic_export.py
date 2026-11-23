@@ -86,7 +86,7 @@ def index_rows(
     0019's columns + ``population``; and the failure tallies. A missing or repeated record, or a
     record of an unknown item, is an error."""
     by_item = {it["id"]: it for it in items}
-    keep = set(index_export.EXPORT_READERS if readers is None else readers)  # plan 0019 + 0024
+    keep = set(index_export.export_readers() if readers is None else readers)  # plan 0019 + 0024
     got: dict[tuple[str, int, str], Mapping[str, Any]] = {}
     for r in recs:
         if r["reader"] not in keep:
@@ -229,7 +229,7 @@ def export_joint(out: Path, model: str) -> dict[str, Any]:
         "n_decline_lines": sum(r["n_claims"] for r in rows),
         "n_off_topic_lines": sum(r["n_contradicted"] for r in rows),
         "truncation": sj_metrics.truncation_share(
-            [r for r in recs if r["reader"] in index_export.EXPORT_READERS]
+            [r for r in recs if r["reader"] in index_export.export_readers()]
         ),
     }
     meta = {

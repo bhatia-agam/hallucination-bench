@@ -20,6 +20,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from hallucination_bench import readers
+
 from .bank import FAMILY, HB_ONLY_BANK
 
 # The pinned WorkspaceBench sha the judge runs at: camila-blank/workspace-bench main 0b18789
@@ -50,6 +52,17 @@ CAMPAIGN_ALL = {
 # plan 0027: mlnla-rl600-all11 (the index's NLA arm) is judged only in this layout; opt-in
 CAMPAIGN_NESTED = ("final-olens-rl600-x4", "mlnla-rl600-all11")
 KNOWN_ARMS = (*ARMS, *CAMPAIGN_NESTED)
+
+
+def campaign_nested() -> tuple[str, ...]:
+    """:data:`CAMPAIGN_NESTED` plus ``readers.extra()``: an extra reader's campaign dirs are
+    nested per arm (``$HBENCH_EXTRA_READERS``; none by default)."""
+    return readers.with_extra(CAMPAIGN_NESTED)
+
+
+def known_arms() -> tuple[str, ...]:
+    """Every arm ``--arms`` accepts: :data:`KNOWN_ARMS` plus ``readers.extra()``."""
+    return readers.with_extra(KNOWN_ARMS)
 
 
 class WsbError(SystemExit):
@@ -85,7 +98,7 @@ def campaign_dir(campaign: Path, arm: str, unit: str, nested: bool = False) -> P
     """The reused campaign judged dir for (arm, unit) (``unit`` = ``all`` or ``L<k>``), or None
     when the campaign does not judge that config (HB judges it itself). ``nested`` (plan 0027,
     ``--layout nested``) treats every arm as nested: ``<campaign>/<arm>/<unit>``."""
-    if nested or arm in CAMPAIGN_NESTED:
+    if nested or arm in campaign_nested():
         return campaign / arm / unit
     if unit == "all":
         return campaign / CAMPAIGN_ALL[arm]

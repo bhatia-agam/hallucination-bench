@@ -14,8 +14,6 @@ import numpy as np
 from . import data, probe, run
 from .probe_data import PROBE_DIR
 
-SITES = Path("overrefusal") / "probe_sites.jsonl"
-ARTIFACT_JSON = PROBE_DIR / "refusal_probe_v1.json"
 TAIL = ("tail3", "tail2", "tail1", "tail0")  # <|im_end|>, \n, <|im_start|>, assistant
 POPS = data.POPULATIONS
 ALL_BUT_LEAD = "all_but_lead"  # every prompt position except the 3 lead template tokens (0-2)
@@ -33,16 +31,6 @@ def _ci(vals: np.ndarray, n_boot: int = 2000) -> dict[str, Any]:
         "lo": float(np.percentile(b, 2.5)),
         "hi": float(np.percentile(b, 97.5)),
     }
-
-
-def load_sites(path: Path) -> dict[tuple[str, int], dict[tuple[str, int], dict[str, Any]]]:
-    """{(variant, layer): {(id, pos): row}}."""
-    out: dict[tuple[str, int], dict[tuple[str, int], dict[str, Any]]] = defaultdict(dict)
-    for line in Path(path).read_text().splitlines():
-        if line.strip():
-            r = json.loads(line)
-            out[(r["variant"], r["layer"])][(r["id"], r["pos"])] = r
-    return out
 
 
 def gates(prov: dict[str, Any], transfer: dict[str, Any]) -> dict[str, dict[str, bool]]:

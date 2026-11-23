@@ -1,12 +1,15 @@
 """``hbench benign-roleplay import|run|report`` (plan 0023), registered through
-``cli.EVAL_CLIS``. Exit codes: 0 ok, 2 pin / layout / refused input, else ``wsbench``'s code."""
+``cli.EVAL_CLIS``; each subcommand is a pydra config (``command.Command``). Exit codes: 0 ok,
+2 pin / layout / refused input, else ``wsbench``'s code."""
 
-import argparse
 import json
 import sys
 from pathlib import Path
 
+import pydra
+
 from hallucination_bench import paths
+from hallucination_bench.command import Command, boolean, choice, integer, many, optional, text
 
 from . import bank, metrics, wsb
 
@@ -22,13 +25,13 @@ def _layers(s: str | None) -> list[int] | None:
 
 def _arms(s: str) -> list[str]:
     arms = [a for a in s.split(",") if a]
-    bad = set(arms) - set(wsb.KNOWN_ARMS)
+    bad = set(arms) - set(wsb.known_arms())
     if bad:
-        raise wsb.WsbError(f"unknown arms {sorted(bad)}; known {list(wsb.KNOWN_ARMS)}")
+        raise wsb.WsbError(f"unknown arms {sorted(bad)}; known {list(wsb.known_arms())}")
     return arms
 
 
-def cmd_import(args: argparse.Namespace) -> int:
+def cmd_import(args: Command) -> int:
     root = Path(args.wsb)
     wsb.check_pin(root, args.wsb_sha)
     bp = wsb.bank_path(root)
@@ -51,11 +54,11 @@ def cmd_import(args: argparse.Namespace) -> int:
     return 0
 
 
-def _out(args: argparse.Namespace) -> Path:
+def _out(args: Command) -> Path:
     return Path(args.out).resolve() / "benign_roleplay" / args.judge
 
 
-def cmd_run(args: argparse.Namespace) -> int:
+def cmd_run(args: Command) -> int:
     calls = wsb.plan_calls(
         campaign=Path(args.campaign),
         readouts=Path(args.readouts_root),
@@ -67,7 +70,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     return wsb.run_calls(Path(args.wsb), calls, dry_run=args.dry_run)
 
 
-def cmd_report(args: argparse.Namespace) -> int:
+def cmd_report(args: Command) -> int:
     out = _out(args)
     floor_res = metrics.read_result(Path(args.floor)) if args.floor else None
     s = metrics.summarize(
@@ -93,7 +96,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_index_export(args: argparse.Namespace) -> int:
+def cmd_index_export(args: Command) -> int:
     from . import index_export
 
     pairs = [kv for kv in args.arm_map.split(",") if kv]
@@ -114,75 +117,106 @@ def cmd_index_export(args: argparse.Namespace) -> int:
     return 0
 
 
-def _wrap(fn):  # type: ignore[no-untyped-def]
-    def inner(args: argparse.Namespace) -> int:
-        try:
-            return int(fn(args))
-        except (wsb.WsbError, ValueError) as e:  # ValueError: bank.build's fail-closed gate
-            print(f"benign-roleplay: {e}", file=sys.stderr)
-            return 2
-
-    return inner
+def _guarded(fn, args: Command) -> int:  # type: ignore[no-untyped-def]
+    """Run ``fn``: a refused pin, layout or input is exit 2 with one line."""
+    try:
+        return int(fn(args))
+    except (wsb.WsbError, ValueError) as e:  # ValueError: bank.build's fail-closed gate
+        print(f"benign-roleplay: {e}", file=sys.stderr)
+        return 2
 
 
-def register(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
-    p = sub.add_parser("benign-roleplay", help="plan 0023: false jailbreak recognition (HB eval)")
-    bsub = p.add_subparsers(dest="br_cmd", required=True)
+def unit_keys(c: Command) -> None:
+    """Which judged results a command reads or writes."""
+    c.key("out", "outputs", text, "output root")
+    c.key("judge", DEFAULT_JUDGE, text, "the family pin (output dir name)")
+    c.key("campaign", str(paths.BR_CAMPAIGN), text, "campaign judged dir")
+    c.key("arms", ",".join(wsb.ARMS), text, "comma-separated arm names")
+    c.key("layers", None, optional(text), "csv subset of readplan.GRID (C3)")
+    c.key(
+        "layout",
+        "flat",
+        choice("flat", "nested"),
+        "flat: plan 0023's campaign dirs; nested: every arm's shared ids at "
+        "<campaign>/<arm>/{all,L<k>} (plan 0027, the index arms)",
+    )
 
-    def common(q: argparse.ArgumentParser) -> None:
-        q.add_argument("--out", default="outputs", help="output root (default: outputs)")
-        q.add_argument("--judge", default=DEFAULT_JUDGE, help="the family pin (output dir name)")
-        q.add_argument("--campaign", default=str(paths.BR_CAMPAIGN), help="campaign judged dir")
-        q.add_argument("--arms", default=",".join(wsb.ARMS))
-        q.add_argument("--layers", default=None, help="csv subset of readplan.GRID (C3)")
-        q.add_argument(
-            "--layout",
-            choices=("flat", "nested"),
-            default="flat",
-            help="flat (default): plan 0023's campaign dirs; nested: every arm's shared ids at "
-            "<campaign>/<arm>/{all,L<k>} (plan 0027, the index arms)",
+
+class Import(Command):
+    about = "copy the gated controls from a pinned WSB checkout"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("wsb", str(paths.WSBENCH_PUB), text, "the WorkspaceBench checkout")
+        self.key("wsb_sha", wsb.WSB_SHA, text, "the commit that checkout must be at")
+        self.key("n_target", bank.N_TARGET, integer, "items to keep")
+        self.key("dest", str(bank.DATA_DIR), text, "the data dir to write")
+
+    def execute(self) -> int:
+        return _guarded(cmd_import, self)
+
+
+class Run(Command):
+    about = "judge via the pinned `wsbench run` (no GPU)"
+
+    def __init__(self) -> None:
+        super().__init__()
+        unit_keys(self)
+        self.key("wsb", str(paths.WSBENCH_PUB), text, "the WorkspaceBench checkout")
+        self.key("readouts_root", str(paths.BR_READOUTS), text, "DIR with the arms' readouts")
+        self.key("dry_run", False, boolean, "print the wsbench calls only")
+
+    def execute(self) -> int:
+        return _guarded(cmd_run, self)
+
+
+class Report(Command):
+    about = "summary.{json,md} from the judged results"
+
+    def __init__(self) -> None:
+        super().__init__()
+        unit_keys(self)
+        self.key("floor", None, optional(text), "po-opus-v1 jailbreak_recognition results.json")
+        self.key(
+            "accept_refused_as_flagged",
+            False,
+            boolean,
+            "admit WSB results incomplete ONLY through judge-refused (unjudged) cells; those "
+            "items count as flagged (conservative) and the count is shown beside the rate",
         )
 
-    im = bsub.add_parser("import", help="copy the gated controls from a pinned WSB checkout")
-    im.add_argument("--wsb", default=str(paths.WSBENCH_PUB))
-    im.add_argument("--wsb-sha", default=wsb.WSB_SHA)
-    im.add_argument("--n-target", type=int, default=bank.N_TARGET)
-    im.add_argument("--dest", default=str(bank.DATA_DIR))
-    im.set_defaults(fn=_wrap(cmd_import))
+    def execute(self) -> int:
+        return _guarded(cmd_report, self)
 
-    rn = bsub.add_parser("run", help="judge via the pinned `wsbench run` (no GPU)")
-    common(rn)
-    rn.add_argument("--wsb", default=str(paths.WSBENCH_PUB))
-    rn.add_argument("--readouts-root", default=str(paths.BR_READOUTS))
-    rn.add_argument("--dry-run", action="store_true", help="print the wsbench calls only")
-    rn.set_defaults(fn=_wrap(cmd_run))
 
-    rp = bsub.add_parser("report", help="summary.{json,md} from the judged results")
-    common(rp)
-    rp.add_argument("--floor", default=None, help="po-opus-v1 jailbreak_recognition results.json")
-    rp.add_argument(
-        "--accept-refused-as-flagged",
-        action="store_true",
-        help="admit WSB results incomplete ONLY through judge-refused (unjudged) cells; those "
-        "items count as flagged (conservative) and the count is shown beside the rate",
-    )
-    rp.set_defaults(fn=_wrap(cmd_report))
+class IndexExport(Command):
+    about = "plan 0027: summary.json -> index_counts.jsonl + index_meta.json (hindex-v7 root)"
 
-    ie = bsub.add_parser(
-        "index-export",
-        help="plan 0027: summary.json -> index_counts.jsonl + index_meta.json (hindex-v7 root)",
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("summary", pydra.REQUIRED, many, "repeatable summary.json")
+        self.key("dest", pydra.REQUIRED, text, "the benign_roleplay_root to write")
+        self.key(
+            "arm_map",
+            "",
+            text,
+            "from=to,... : rename an eval arm to an index reader name (no-op when they match)",
+        )
+        self.key(
+            "joint",
+            False,
+            boolean,
+            "plan 0029: also write the eval's `all` unit to index_counts_joint.jsonl (the "
+            "hindex-v8 joint rows; layer 'all')",
+        )
+
+    def execute(self) -> int:
+        return _guarded(cmd_index_export, self)
+
+
+COMMANDS = {
+    "benign-roleplay": (
+        "plan 0023: false jailbreak recognition (HB eval)",
+        {"import": Import, "run": Run, "report": Report, "index-export": IndexExport},
     )
-    ie.add_argument("--summary", action="append", required=True, help="repeatable summary.json")
-    ie.add_argument("--dest", required=True, help="the --benign-roleplay-root to write")
-    ie.add_argument(
-        "--arm-map",
-        default="",
-        help="from=to,... : rename an eval arm to an index reader name (no-op when they match)",
-    )
-    ie.add_argument(
-        "--joint",
-        action="store_true",
-        help="plan 0029: also write the eval's `all` unit to index_counts_joint.jsonl (the "
-        "hindex-v8 joint rows; layer 'all')",
-    )
-    ie.set_defaults(fn=_wrap(cmd_index_export))
+}

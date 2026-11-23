@@ -1,0 +1,2056 @@
+{
+ "cases": [
+  {
+   "argv": [
+    "run",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--bank",
+    "wsb",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--stages",
+    "map,cverify",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": "wsb",
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": null,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "map,cverify",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--bank",
+    "x3",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--stages",
+    "map,cverify",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600",
+    "--layers",
+    "44",
+    "--limit",
+    "5",
+    "--allow-missing"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": true,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": "x3",
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": "44",
+    "limit": 5,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "map,cverify",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "index",
+    "--version",
+    "v8",
+    "--out",
+    "/o",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--main-root",
+    "/o/wsbench_chat/claude-opus-5-5",
+    "--workers",
+    "1"
+   ],
+   "kind": "driver",
+   "values": {
+    "am_root": null,
+    "am_situation_root": null,
+    "benign_roleplay_root": null,
+    "dest": null,
+    "judge_model": "claude-opus-5-5",
+    "main_root": [
+     "/o/wsbench_chat/claude-opus-5-5"
+    ],
+    "methods": "<cli.INDEX_METHODS>",
+    "out": "/o",
+    "overrefusal_root": null,
+    "story_root": null,
+    "um_root": null,
+    "version": "v8",
+    "workers": 1
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--eval",
+    "story",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--stages",
+    "map,cverify",
+    "--layers",
+    "20,24,28,32,36,40,44,48,52,56,60",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "story",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": "20,24,28,32,36,40,44,48,52,56,60",
+    "limit": null,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "map,cverify",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--eval",
+    "story",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--stages",
+    "map,cverify",
+    "--layers",
+    "20,24,28,32,36,40,44,48,52,56,60",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600",
+    "--limit",
+    "3"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "story",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": "20,24,28,32,36,40,44,48,52,56,60",
+    "limit": 3,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "map,cverify",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--eval",
+    "agentic_misalignment",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-model",
+    "claude-sonnet-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600",
+    "--stages",
+    "intent"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "agentic_misalignment",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": null,
+    "map_model": "claude-sonnet-5-5",
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "intent",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--eval",
+    "agentic_misalignment",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-model",
+    "claude-sonnet-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600",
+    "--stages",
+    "detect,map,cverify,situation",
+    "--layers",
+    "20,24,28,32,36,40,44,48,52,56,60"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "agentic_misalignment",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": "20,24,28,32,36,40,44,48,52,56,60",
+    "limit": null,
+    "map_model": "claude-sonnet-5-5",
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "detect,map,cverify,situation",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--eval",
+    "agentic_misalignment",
+    "--out",
+    "/o",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "olens",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--map-model",
+    "claude-sonnet-5-5",
+    "--map-prompt",
+    "claimmap-v2.9",
+    "--concurrency",
+    "16",
+    "--rpm",
+    "600",
+    "--stages",
+    "detect,map,cverify,situation",
+    "--layers",
+    "20,24,28,32,36,40,44,48,52,56,60",
+    "--limit",
+    "4",
+    "--items",
+    "am-01,am-02"
+   ],
+   "kind": "driver",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "olens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 16,
+    "effort": "low",
+    "eval": "agentic_misalignment",
+    "excuse_verifier": null,
+    "items": "am-01,am-02",
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": "20,24,28,32,36,40,44,48,52,56,60",
+    "limit": 4,
+    "map_model": "claude-sonnet-5-5",
+    "map_prompt": "claimmap-v2.9",
+    "out": "/o",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 600.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "detect,map,cverify,situation",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "index",
+    "--version",
+    "v8",
+    "--out",
+    "/o",
+    "--judge-model",
+    "claude-opus-5-5",
+    "--workers",
+    "4",
+    "--dest",
+    "/o/index_all/claude-opus-5-5",
+    "--main-root",
+    "/o/wsbench_chat/claude-opus-5-5",
+    "--story-root",
+    "/o/story/claude-opus-5-5",
+    "--am-root",
+    "/o/agentic_misalignment/claude-opus-5-5",
+    "--overrefusal-root",
+    "/o/or/overrefusal/claude-opus-5-5/offtopic_index",
+    "--benign-roleplay-root",
+    "/o/br_index_root",
+    "--um-root",
+    "/o/index_all/no_sibling"
+   ],
+   "kind": "driver",
+   "values": {
+    "am_root": [
+     "/o/agentic_misalignment/claude-opus-5-5"
+    ],
+    "am_situation_root": null,
+    "benign_roleplay_root": [
+     "/o/br_index_root"
+    ],
+    "dest": "/o/index_all/claude-opus-5-5",
+    "judge_model": "claude-opus-5-5",
+    "main_root": [
+     "/o/wsbench_chat/claude-opus-5-5"
+    ],
+    "methods": "<cli.INDEX_METHODS>",
+    "out": "/o",
+    "overrefusal_root": [
+     "/o/or/overrefusal/claude-opus-5-5/offtopic_index"
+    ],
+    "story_root": [
+     "/o/story/claude-opus-5-5"
+    ],
+    "um_root": [
+     "/o/index_all/no_sibling"
+    ],
+    "version": "v8",
+    "workers": 4
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "offtopic-export",
+    "--out",
+    "/o/or",
+    "--judge-model",
+    "claude-opus-5-5"
+   ],
+   "kind": "driver",
+   "values": {
+    "joint": false,
+    "judge_model": "claude-opus-5-5",
+    "out": "/o/or"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "report",
+    "--arms",
+    "olens",
+    "--layout",
+    "nested",
+    "--campaign",
+    "/o/br_campaign",
+    "--out",
+    "/o",
+    "--judge",
+    "claude-sonnet-5",
+    "--accept-refused-as-flagged"
+   ],
+   "kind": "driver",
+   "values": {
+    "accept_refused_as_flagged": true,
+    "arms": "olens",
+    "campaign": "/o/br_campaign",
+    "floor": null,
+    "judge": "claude-sonnet-5",
+    "layers": null,
+    "layout": "nested",
+    "out": "/o"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "report",
+    "--arms",
+    "olens",
+    "--layout",
+    "nested",
+    "--campaign",
+    "/o/br_campaign",
+    "--out",
+    "/o",
+    "--judge",
+    "claude-sonnet-5"
+   ],
+   "kind": "driver",
+   "values": {
+    "accept_refused_as_flagged": false,
+    "arms": "olens",
+    "campaign": "/o/br_campaign",
+    "floor": null,
+    "judge": "claude-sonnet-5",
+    "layers": null,
+    "layout": "nested",
+    "out": "/o"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "index-export",
+    "--summary",
+    "/o/benign_roleplay/claude-sonnet-5/summary.json",
+    "--dest",
+    "/o/br_index_root.tmp",
+    "--joint"
+   ],
+   "kind": "driver",
+   "values": {
+    "arm_map": "",
+    "dest": "/o/br_index_root.tmp",
+    "joint": true,
+    "summary": [
+     "/o/benign_roleplay/claude-sonnet-5/summary.json"
+    ]
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--out",
+    "outputs/smoke",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "s3d-rl600,nla-rl-L42,jlens",
+    "--layers",
+    "42,44",
+    "--limit",
+    "5",
+    "--show-prompts",
+    "5"
+   ],
+   "kind": "other",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "s3d-rl600,nla-rl-L42,jlens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": "42,44",
+    "limit": 5,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.7",
+    "out": "outputs/smoke",
+    "readouts_root": "/r",
+    "rebuild": false,
+    "rpm": 1500.0,
+    "sample_seed": null,
+    "show_prompts": 5,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": null,
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--rebuild",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "jlens",
+    "--out",
+    "outputs"
+   ],
+   "kind": "other",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": null,
+    "arms": "jlens",
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": null,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.7",
+    "out": "outputs",
+    "readouts_root": "/r",
+    "rebuild": true,
+    "rpm": 1500.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": null,
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--arm",
+    "a=/x/a.jsonl",
+    "--arm",
+    "b=/x/b,c.jsonl",
+    "--skip-classify"
+   ],
+   "kind": "other",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": [
+     "a=/x/a.jsonl",
+     "b=/x/b,c.jsonl"
+    ],
+    "arms": null,
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": null,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.7",
+    "out": "outputs",
+    "readouts_root": null,
+    "rebuild": false,
+    "rpm": 1500.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": true,
+    "stages": null,
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--arm",
+    "a=/x/a.jsonl",
+    "--stages",
+    "map",
+    "--anchor",
+    "v5c",
+    "--sample-seed",
+    "7",
+    "--limit",
+    "2"
+   ],
+   "kind": "other",
+   "values": {
+    "allow_missing": false,
+    "anchor": "v5c",
+    "arm": [
+     "a=/x/a.jsonl"
+    ],
+    "arms": null,
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": 2,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.7",
+    "out": "outputs",
+    "readouts_root": null,
+    "rebuild": false,
+    "rpm": 1500.0,
+    "sample_seed": 7,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": "map",
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--arm",
+    "a=/x/a.jsonl",
+    "--joint",
+    "--joint-from",
+    "a,b",
+    "--map-prompt",
+    "claimmap-v2.8",
+    "--excuse-verifier",
+    "off",
+    "--situation-model",
+    "claude-opus-5-5",
+    "--effort",
+    "none"
+   ],
+   "kind": "other",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": [
+     "a=/x/a.jsonl"
+    ],
+    "arms": null,
+    "bank": null,
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "none",
+    "eval": "wsbench_chat",
+    "excuse_verifier": "off",
+    "items": null,
+    "joint": true,
+    "joint_from": "a,b",
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": null,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.8",
+    "out": "outputs",
+    "readouts_root": null,
+    "rebuild": false,
+    "rpm": 1500.0,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": "claude-opus-5-5",
+    "skip_classify": false,
+    "stages": null,
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "run",
+    "--arm=a=/x/a.jsonl",
+    "--summarizer-model=m1",
+    "--classifier-model=m2",
+    "--rpm=12.5"
+   ],
+   "kind": "other",
+   "values": {
+    "allow_missing": false,
+    "anchor": "none",
+    "arm": [
+     "a=/x/a.jsonl"
+    ],
+    "arms": null,
+    "bank": null,
+    "classifier_model": "m2",
+    "concurrency": 64,
+    "effort": "low",
+    "eval": "wsbench_chat",
+    "excuse_verifier": null,
+    "items": null,
+    "joint": false,
+    "joint_from": null,
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "limit": null,
+    "map_model": null,
+    "map_prompt": "claimmap-v2.7",
+    "out": "outputs",
+    "readouts_root": null,
+    "rebuild": false,
+    "rpm": 12.5,
+    "sample_seed": null,
+    "show_prompts": 0,
+    "situation_model": null,
+    "skip_classify": false,
+    "stages": null,
+    "summarizer_model": "m1"
+   }
+  },
+  {
+   "argv": [
+    "calibrate",
+    "--split",
+    "dev"
+   ],
+   "kind": "other",
+   "values": {
+    "anchor": "none",
+    "cases": null,
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "low",
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "map_model": null,
+    "out": "outputs",
+    "prompt": "claimmap-v2.7",
+    "repeats": 2,
+    "rpm": 1500.0,
+    "split": "dev",
+    "taxonomy": "v1"
+   }
+  },
+  {
+   "argv": [
+    "calibrate",
+    "--taxonomy",
+    "v2",
+    "--split",
+    "heldout",
+    "--prompt",
+    "claimmap-v2.9",
+    "--anchor",
+    "v5c",
+    "--repeats",
+    "3",
+    "--cases",
+    "/x/cases.jsonl",
+    "--map-model",
+    "m",
+    "--classifier-model",
+    "c"
+   ],
+   "kind": "other",
+   "values": {
+    "anchor": "v5c",
+    "cases": "/x/cases.jsonl",
+    "classifier_model": "c",
+    "concurrency": 64,
+    "effort": "low",
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "map_model": "m",
+    "out": "outputs",
+    "prompt": "claimmap-v2.9",
+    "repeats": 3,
+    "rpm": 1500.0,
+    "split": "heldout",
+    "taxonomy": "v2"
+   }
+  },
+  {
+   "argv": [
+    "report",
+    "--out",
+    "outputs"
+   ],
+   "kind": "other",
+   "values": {
+    "audit_n": null,
+    "audit_verdict_n": 20,
+    "bank": null,
+    "eval": "wsbench_chat",
+    "judge_model": "claude-opus-5-5",
+    "no_rebuild": false,
+    "out": "outputs",
+    "readouts_root": null,
+    "seed": 0,
+    "view": "v1"
+   }
+  },
+  {
+   "argv": [
+    "report",
+    "--out",
+    "outputs",
+    "--view",
+    "v2",
+    "--no-rebuild",
+    "--audit-n",
+    "4",
+    "--audit-verdict-n",
+    "9",
+    "--seed",
+    "3",
+    "--eval",
+    "story",
+    "--bank",
+    "x3",
+    "--readouts-root",
+    "/r"
+   ],
+   "kind": "other",
+   "values": {
+    "audit_n": 4,
+    "audit_verdict_n": 9,
+    "bank": "x3",
+    "eval": "story",
+    "judge_model": "claude-opus-5-5",
+    "no_rebuild": true,
+    "out": "outputs",
+    "readouts_root": "/r",
+    "seed": 3,
+    "view": "v2"
+   }
+  },
+  {
+   "argv": [
+    "consistency-v2",
+    "--arms",
+    "s3d-rl600:44,nla-rl-L42:42,jlens:44",
+    "--n",
+    "50",
+    "--seed",
+    "0"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "s3d-rl600:44,nla-rl-L42:42,jlens:44",
+    "classifier_model": null,
+    "concurrency": 64,
+    "effort": "low",
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "map_model": null,
+    "n": 50,
+    "out": "outputs",
+    "readouts_root": "<paths.READOUTS_ROOT>",
+    "rescore": false,
+    "rpm": 1500.0,
+    "seed": 0,
+    "summarizer_model": null
+   }
+  },
+  {
+   "argv": [
+    "consistency-v2",
+    "--rescore",
+    "--map-model",
+    "m",
+    "--summarizer-model",
+    "s",
+    "--classifier-model",
+    "c",
+    "--readouts-root",
+    "/r"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": null,
+    "classifier_model": "c",
+    "concurrency": 64,
+    "effort": "low",
+    "judge_backend": null,
+    "judge_model": "claude-opus-5-5",
+    "map_model": "m",
+    "n": 50,
+    "out": "outputs",
+    "readouts_root": "/r",
+    "rescore": true,
+    "rpm": 1500.0,
+    "seed": 0,
+    "summarizer_model": "s"
+   }
+  },
+  {
+   "argv": [
+    "pilot-dump",
+    "--arms",
+    "a,b",
+    "--dest",
+    "x.jsonl"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a,b",
+    "dest": "x.jsonl",
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "out": "outputs",
+    "per_stratum": 5,
+    "seed": 0
+   }
+  },
+  {
+   "argv": [
+    "pilot-dump",
+    "--arms",
+    "a,b",
+    "--dest",
+    "x.jsonl",
+    "--layers",
+    "42,44",
+    "--per-stratum",
+    "2",
+    "--seed",
+    "1",
+    "--out",
+    "o",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a,b",
+    "dest": "x.jsonl",
+    "judge_model": "m",
+    "layers": "42,44",
+    "out": "o",
+    "per_stratum": 2,
+    "seed": 1
+   }
+  },
+  {
+   "argv": [
+    "pilot-dump-v2",
+    "--arms",
+    "a,b",
+    "--dest",
+    "x.jsonl"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a,b",
+    "dest": "x.jsonl",
+    "judge_model": "claude-opus-5-5",
+    "layers": null,
+    "out": "outputs",
+    "per_stratum": 3,
+    "seed": 0
+   }
+  },
+  {
+   "argv": [
+    "pilot-dump-v2",
+    "--arms",
+    "a",
+    "--dest",
+    "x.jsonl",
+    "--layers",
+    "44",
+    "--per-stratum",
+    "9",
+    "--seed",
+    "2"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a",
+    "dest": "x.jsonl",
+    "judge_model": "claude-opus-5-5",
+    "layers": "44",
+    "out": "outputs",
+    "per_stratum": 9,
+    "seed": 2
+   }
+  },
+  {
+   "argv": [
+    "units-v2",
+    "--cases",
+    "in.jsonl",
+    "--dest",
+    "out.jsonl"
+   ],
+   "kind": "other",
+   "values": {
+    "cases": "in.jsonl",
+    "dest": "out.jsonl"
+   }
+  },
+  {
+   "argv": [
+    "index"
+   ],
+   "kind": "other",
+   "values": {
+    "am_root": null,
+    "am_situation_root": null,
+    "benign_roleplay_root": null,
+    "dest": null,
+    "judge_model": "claude-opus-5-5",
+    "main_root": null,
+    "methods": "<cli.INDEX_METHODS>",
+    "out": "outputs",
+    "overrefusal_root": null,
+    "story_root": null,
+    "um_root": null,
+    "version": "v8",
+    "workers": 8
+   }
+  },
+  {
+   "argv": [
+    "index",
+    "--version",
+    "v8",
+    "--methods",
+    "/x/methods.json",
+    "--am-situation-root",
+    "/a",
+    "--am-situation-root",
+    "/b"
+   ],
+   "kind": "other",
+   "values": {
+    "am_root": null,
+    "am_situation_root": [
+     "/a",
+     "/b"
+    ],
+    "benign_roleplay_root": null,
+    "dest": null,
+    "judge_model": "claude-opus-5-5",
+    "main_root": null,
+    "methods": "/x/methods.json",
+    "out": "outputs",
+    "overrefusal_root": null,
+    "story_root": null,
+    "um_root": null,
+    "version": "v8",
+    "workers": 8
+   }
+  },
+  {
+   "argv": [
+    "final",
+    "--manifest",
+    "data/index/v8_manifest.json"
+   ],
+   "kind": "other",
+   "values": {
+    "manifest": "data/index/v8_manifest.json",
+    "methods": "<cli.INDEX_METHODS>",
+    "out": "outputs/final",
+    "plots": "plots/final",
+    "workers": 8
+   }
+  },
+  {
+   "argv": [
+    "final",
+    "--manifest",
+    "m.json",
+    "--out",
+    "o",
+    "--plots",
+    "p",
+    "--methods",
+    "/x/methods.json",
+    "--workers",
+    "2"
+   ],
+   "kind": "other",
+   "values": {
+    "manifest": "m.json",
+    "methods": "/x/methods.json",
+    "out": "o",
+    "plots": "p",
+    "workers": 2
+   }
+  },
+  {
+   "argv": [
+    "try"
+   ],
+   "kind": "other",
+   "values": {
+    "dry_run": false,
+    "family": "wsbench_chat",
+    "judge_model": "claude-opus-5-5",
+    "n": 2,
+    "out": null,
+    "readouts": null
+   }
+  },
+  {
+   "argv": [
+    "try",
+    "--family",
+    "story",
+    "-n",
+    "5",
+    "--dry-run",
+    "--out",
+    "/o",
+    "--readouts",
+    "/x/r.jsonl",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "dry_run": true,
+    "family": "story",
+    "judge_model": "m",
+    "n": 5,
+    "out": "/o",
+    "readouts": "/x/r.jsonl"
+   }
+  },
+  {
+   "argv": [
+    "check"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "",
+    "option": null,
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "all"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "all",
+    "option": null,
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "readouts_contract",
+    "--readouts",
+    "/x/r.jsonl"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "readouts_contract",
+    "option": null,
+    "readouts": "/x/r.jsonl"
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "dry_run",
+    "--family",
+    "story",
+    "--option",
+    "colour=blue",
+    "--option",
+    "size=3"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "story",
+    "name": "dry_run",
+    "option": [
+     "colour=blue",
+     "size=3"
+    ],
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "candidates"
+   ],
+   "kind": "other",
+   "values": {
+    "n_hard": 400,
+    "n_toxic": 150,
+    "seed": 0
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "candidates",
+    "--n-hard",
+    "10",
+    "--n-toxic",
+    "5",
+    "--seed",
+    "2"
+   ],
+   "kind": "other",
+   "values": {
+    "n_hard": 10,
+    "n_toxic": 5,
+    "seed": 2
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "judge-gt"
+   ],
+   "kind": "other",
+   "values": {
+    "candidates": "",
+    "concurrency": 96,
+    "greedy": "",
+    "judge_model": "claude-opus-5-5",
+    "labels_out": "",
+    "limit": null,
+    "out": "outputs",
+    "rpm": 1000.0,
+    "samples": ""
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "judge-gt",
+    "--candidates",
+    "c",
+    "--samples",
+    "s",
+    "--labels-out",
+    "l",
+    "--greedy",
+    "g",
+    "--limit",
+    "3",
+    "--rpm",
+    "10",
+    "--concurrency",
+    "4",
+    "--out",
+    "o",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "candidates": "c",
+    "concurrency": 4,
+    "greedy": "g",
+    "judge_model": "m",
+    "labels_out": "l",
+    "limit": 3,
+    "out": "o",
+    "rpm": 10.0,
+    "samples": "s"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "bank"
+   ],
+   "kind": "other",
+   "values": {
+    "n_always": 50,
+    "n_hard_refused": 50,
+    "n_never": 150
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "bank",
+    "--n-never",
+    "1",
+    "--n-hard-refused",
+    "2",
+    "--n-always",
+    "3"
+   ],
+   "kind": "other",
+   "values": {
+    "n_always": 3,
+    "n_hard_refused": 2,
+    "n_never": 1
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "run",
+    "--arms",
+    "a",
+    "--limit",
+    "3"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a",
+    "concurrency": 96,
+    "judge_model": "claude-opus-5-5",
+    "layers": "",
+    "limit": 3,
+    "out": "outputs",
+    "readouts_root": null,
+    "rpm": 1000.0,
+    "stages": "detect,verify"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "run",
+    "--readouts-root",
+    "/r",
+    "--layers",
+    "28,36",
+    "--stages",
+    "detect"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "",
+    "concurrency": 96,
+    "judge_model": "claude-opus-5-5",
+    "layers": "28,36",
+    "limit": null,
+    "out": "outputs",
+    "readouts_root": "/r",
+    "rpm": 1000.0,
+    "stages": "detect"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "grow",
+    "pairs"
+   ],
+   "kind": "other",
+   "values": {
+    "step": "pairs"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "wsb-export",
+    "--family-dir",
+    "/f"
+   ],
+   "kind": "other",
+   "values": {
+    "family_dir": "/f",
+    "judge_model": "claude-sonnet-5-5",
+    "out": "outputs"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "wsb-export",
+    "--family-dir",
+    "/f",
+    "--out",
+    "o",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "family_dir": "/f",
+    "judge_model": "m",
+    "out": "o"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "offtopic-export"
+   ],
+   "kind": "other",
+   "values": {
+    "joint": false,
+    "judge_model": "claude-opus-5-5",
+    "out": "outputs"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "offtopic-export",
+    "--joint"
+   ],
+   "kind": "other",
+   "values": {
+    "joint": true,
+    "judge_model": "claude-opus-5-5",
+    "out": "outputs"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "freeze"
+   ],
+   "kind": "other",
+   "values": {
+    "date": "2026-10-28"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "freeze",
+    "--date",
+    "2026-11-01"
+   ],
+   "kind": "other",
+   "values": {
+    "date": "2026-11-01"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "probe-data",
+    "80k"
+   ],
+   "kind": "other",
+   "values": {
+    "step": "80k"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "probe-report"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "",
+    "judge_model": "claude-sonnet-5-5",
+    "out": "outputs"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "probe-report",
+    "--arms",
+    "a,b",
+    "--out",
+    "o",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a,b",
+    "judge_model": "m",
+    "out": "o"
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "report"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "",
+    "judge_model": "claude-opus-5-5",
+    "out": "outputs",
+    "readouts_root": null
+   }
+  },
+  {
+   "argv": [
+    "overrefusal",
+    "report",
+    "--readouts-root",
+    "/r",
+    "--arms",
+    "a,b",
+    "--out",
+    "o",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "a,b",
+    "judge_model": "m",
+    "out": "o",
+    "readouts_root": "/r"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "import"
+   ],
+   "kind": "other",
+   "values": {
+    "dest": "<benign_roleplay.bank.DATA_DIR>",
+    "n_target": 150,
+    "wsb": "<paths.WSBENCH_PUB>",
+    "wsb_sha": "0b1878987927555a9d88f65c6fc3c14debb76e1e"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "import",
+    "--wsb",
+    "/w",
+    "--wsb-sha",
+    "abc",
+    "--n-target",
+    "9",
+    "--dest",
+    "/d"
+   ],
+   "kind": "other",
+   "values": {
+    "dest": "/d",
+    "n_target": 9,
+    "wsb": "/w",
+    "wsb_sha": "abc"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "run"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "s3d-rl600,jlens,mlnla-rl2-2000",
+    "campaign": "<paths.BR_CAMPAIGN>",
+    "dry_run": false,
+    "judge": "claude-sonnet-5",
+    "layers": null,
+    "layout": "flat",
+    "out": "outputs",
+    "readouts_root": "<paths.BR_READOUTS>",
+    "wsb": "<paths.WSBENCH_PUB>"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "run",
+    "--wsb",
+    "/w",
+    "--readouts-root",
+    "/r",
+    "--dry-run",
+    "--layers",
+    "44",
+    "--arms",
+    "jlens"
+   ],
+   "kind": "other",
+   "values": {
+    "arms": "jlens",
+    "campaign": "<paths.BR_CAMPAIGN>",
+    "dry_run": true,
+    "judge": "claude-sonnet-5",
+    "layers": "44",
+    "layout": "flat",
+    "out": "outputs",
+    "readouts_root": "/r",
+    "wsb": "/w"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "report"
+   ],
+   "kind": "other",
+   "values": {
+    "accept_refused_as_flagged": false,
+    "arms": "s3d-rl600,jlens,mlnla-rl2-2000",
+    "campaign": "<paths.BR_CAMPAIGN>",
+    "floor": null,
+    "judge": "claude-sonnet-5",
+    "layers": null,
+    "layout": "flat",
+    "out": "outputs"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "report",
+    "--layers",
+    "44",
+    "--floor",
+    "f.json"
+   ],
+   "kind": "other",
+   "values": {
+    "accept_refused_as_flagged": false,
+    "arms": "s3d-rl600,jlens,mlnla-rl2-2000",
+    "campaign": "<paths.BR_CAMPAIGN>",
+    "floor": "f.json",
+    "judge": "claude-sonnet-5",
+    "layers": "44",
+    "layout": "flat",
+    "out": "outputs"
+   }
+  },
+  {
+   "argv": [
+    "benign-roleplay",
+    "index-export",
+    "--summary",
+    "a.json",
+    "--summary",
+    "b.json",
+    "--dest",
+    "/d",
+    "--arm-map",
+    "x=y"
+   ],
+   "kind": "other",
+   "values": {
+    "arm_map": "x=y",
+    "dest": "/d",
+    "joint": false,
+    "summary": [
+     "a.json",
+     "b.json"
+    ]
+   }
+  }
+ ],
+ "defaults": {
+  "benign-roleplay import": {
+   "dest": "<benign_roleplay.bank.DATA_DIR>",
+   "n_target": 150,
+   "wsb": "<paths.WSBENCH_PUB>",
+   "wsb_sha": "0b1878987927555a9d88f65c6fc3c14debb76e1e"
+  },
+  "benign-roleplay index-export": {
+   "arm_map": "",
+   "dest": "<required>",
+   "joint": false,
+   "summary": "<required>"
+  },
+  "benign-roleplay report": {
+   "accept_refused_as_flagged": false,
+   "arms": "s3d-rl600,jlens,mlnla-rl2-2000",
+   "campaign": "<paths.BR_CAMPAIGN>",
+   "floor": null,
+   "judge": "claude-sonnet-5",
+   "layers": null,
+   "layout": "flat",
+   "out": "outputs"
+  },
+  "benign-roleplay run": {
+   "arms": "s3d-rl600,jlens,mlnla-rl2-2000",
+   "campaign": "<paths.BR_CAMPAIGN>",
+   "dry_run": false,
+   "judge": "claude-sonnet-5",
+   "layers": null,
+   "layout": "flat",
+   "out": "outputs",
+   "readouts_root": "<paths.BR_READOUTS>",
+   "wsb": "<paths.WSBENCH_PUB>"
+  },
+  "calibrate": {
+   "anchor": "none",
+   "cases": null,
+   "classifier_model": null,
+   "concurrency": 64,
+   "effort": "low",
+   "judge_backend": null,
+   "judge_model": "claude-opus-5-5",
+   "map_model": null,
+   "out": "outputs",
+   "prompt": "claimmap-v2.7",
+   "repeats": 2,
+   "rpm": 1500.0,
+   "split": "<required>",
+   "taxonomy": "v1"
+  },
+  "check": {
+   "family": "",
+   "name": "",
+   "option": null,
+   "readouts": ""
+  },
+  "consistency-v2": {
+   "arms": null,
+   "classifier_model": null,
+   "concurrency": 64,
+   "effort": "low",
+   "judge_backend": null,
+   "judge_model": "claude-opus-5-5",
+   "map_model": null,
+   "n": 50,
+   "out": "outputs",
+   "readouts_root": "<paths.READOUTS_ROOT>",
+   "rescore": false,
+   "rpm": 1500.0,
+   "seed": 0,
+   "summarizer_model": null
+  },
+  "final": {
+   "manifest": "<required>",
+   "methods": "<cli.INDEX_METHODS>",
+   "out": "outputs/final",
+   "plots": "plots/final",
+   "workers": 8
+  },
+  "index": {
+   "am_root": null,
+   "am_situation_root": null,
+   "benign_roleplay_root": null,
+   "dest": null,
+   "judge_model": "claude-opus-5-5",
+   "main_root": null,
+   "methods": "<cli.INDEX_METHODS>",
+   "out": "outputs",
+   "overrefusal_root": null,
+   "story_root": null,
+   "um_root": null,
+   "version": "v8",
+   "workers": 8
+  },
+  "overrefusal bank": {
+   "n_always": 50,
+   "n_hard_refused": 50,
+   "n_never": 150
+  },
+  "overrefusal candidates": {
+   "n_hard": 400,
+   "n_toxic": 150,
+   "seed": 0
+  },
+  "overrefusal freeze": {
+   "date": "2026-10-28"
+  },
+  "overrefusal grow": {
+   "step": "<required>"
+  },
+  "overrefusal judge-gt": {
+   "candidates": "",
+   "concurrency": 96,
+   "greedy": "",
+   "judge_model": "claude-opus-5-5",
+   "labels_out": "",
+   "limit": null,
+   "out": "outputs",
+   "rpm": 1000.0,
+   "samples": ""
+  },
+  "overrefusal offtopic-export": {
+   "joint": false,
+   "judge_model": "claude-opus-5-5",
+   "out": "outputs"
+  },
+  "overrefusal probe-data": {
+   "step": "<required>"
+  },
+  "overrefusal probe-report": {
+   "arms": "",
+   "judge_model": "claude-sonnet-5-5",
+   "out": "outputs"
+  },
+  "overrefusal report": {
+   "arms": "",
+   "judge_model": "claude-opus-5-5",
+   "out": "outputs",
+   "readouts_root": null
+  },
+  "overrefusal run": {
+   "arms": "",
+   "concurrency": 96,
+   "judge_model": "claude-opus-5-5",
+   "layers": "",
+   "limit": null,
+   "out": "outputs",
+   "readouts_root": null,
+   "rpm": 1000.0,
+   "stages": "detect,verify"
+  },
+  "overrefusal wsb-export": {
+   "family_dir": "<required>",
+   "judge_model": "claude-sonnet-5-5",
+   "out": "outputs"
+  },
+  "pilot-dump": {
+   "arms": "<required>",
+   "dest": "<required>",
+   "judge_model": "claude-opus-5-5",
+   "layers": null,
+   "out": "outputs",
+   "per_stratum": 5,
+   "seed": 0
+  },
+  "pilot-dump-v2": {
+   "arms": "<required>",
+   "dest": "<required>",
+   "judge_model": "claude-opus-5-5",
+   "layers": null,
+   "out": "outputs",
+   "per_stratum": 3,
+   "seed": 0
+  },
+  "plan": {
+   "families": "main,story,agentic_misalignment,overrefusal,benign_roleplay",
+   "layers": null,
+   "out": "outputs/plan"
+  },
+  "readouts": {
+   "family": "<required>",
+   "layers": null,
+   "readouts": "<required>"
+  },
+  "report": {
+   "audit_n": null,
+   "audit_verdict_n": 20,
+   "bank": null,
+   "eval": "wsbench_chat",
+   "judge_model": "claude-opus-5-5",
+   "no_rebuild": false,
+   "out": "outputs",
+   "readouts_root": null,
+   "seed": 0,
+   "view": "v1"
+  },
+  "run": {
+   "allow_missing": false,
+   "anchor": "none",
+   "arm": null,
+   "arms": null,
+   "bank": null,
+   "classifier_model": null,
+   "concurrency": 64,
+   "effort": "low",
+   "eval": "wsbench_chat",
+   "excuse_verifier": null,
+   "items": null,
+   "joint": false,
+   "joint_from": null,
+   "judge_backend": null,
+   "judge_model": "claude-opus-5-5",
+   "layers": null,
+   "limit": null,
+   "map_model": null,
+   "map_prompt": "claimmap-v2.7",
+   "out": "outputs",
+   "readouts_root": null,
+   "rebuild": false,
+   "rpm": 1500.0,
+   "sample_seed": null,
+   "show_prompts": 0,
+   "situation_model": null,
+   "skip_classify": false,
+   "stages": null,
+   "summarizer_model": null
+  },
+  "try": {
+   "dry_run": false,
+   "family": "wsbench_chat",
+   "judge_model": "claude-opus-5-5",
+   "n": 2,
+   "out": null,
+   "readouts": null
+  },
+  "units-v2": {
+   "cases": "<required>",
+   "dest": "<required>"
+  }
+ },
+ "written_by": "recorded from the argparse command line on its last commit, before the port to pydra-config: every subcommand's defaults, and the namespace argparse produced for a list of old-spelling command lines. Edited since only to follow the commands: removed ones dropped, new keys added with their default."
+}

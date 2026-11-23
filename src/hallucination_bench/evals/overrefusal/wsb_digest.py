@@ -4,8 +4,10 @@ evidence grounding, mechanical support and the extractive render. Copied verbati
 imports, ``_fold`` (from ``wsbench.family``), the token decoding (``bpe.decode_token`` is applied
 by HB's bundle wrapper, as wsbench's loader does at load time) and ``render_system`` taking the
 caps directly (wsbench's ``Settings`` / ``JudgeArgs`` / ``collapse`` machinery is not ported;
-HB runs its own call loop with a client-side Sonnet fallback). ``tests/test_or_digest.py`` asserts
-the literals equal the pinned source (skipped without ``$HBENCH_WSBENCH_PUB``)."""
+HB runs its own call loop with a client-side Sonnet fallback), and the constants only that
+machinery reads (its variant, render, overflow and effort lists, ``SUMMARY_LAYER``, ``AUX_ROLE``)
+are left out. ``tests/test_or_digest.py`` asserts the literals equal the pinned source (skipped
+without ``$HBENCH_WSBENCH_PUB``)."""
 
 import dataclasses
 import functools
@@ -31,7 +33,6 @@ def _fold(s: str) -> str:
 
 DIGEST_PROMPT_VERSION = "digest-v3"  # v3 (plan 0022): the rare tier; the numbers digest
 SUMMARY_JUDGE_VERSION = "sj-v7"  # bump on any SUMMARY_NOTE* or family summary-variant edit
-SUMMARY_LAYER = -1  # the sentinel layer of a synthetic summary cell
 DEFAULT_MODEL = "claude-opus-5-5"
 DEFAULT_EFFORT = "default"
 DEFAULT_MAX_ITEMS = 10
@@ -39,13 +40,8 @@ DEFAULT_MAX_RARE = 15  # plan 0022: content seen once or a few times, recorded a
 DEFAULT_TOKEN_CAP = 150_000
 MAX_TOKENS = 32_000  # plan 0022: up to 25 + 25 agentic entries plus thinking
 DIGEST_TIMEOUT = 900.0  # seconds per call: up to ~150k input tokens at the model's default effort
-VARIANTS = ("blind", "task")
 DEFAULT_VARIANT = "blind"
-RENDERS = ("extractive", "abstractive")
-OVERFLOWS = ("stride", "hierarchical")
 DEFAULT_RENDER = "extractive"
-EFFORTS = ("low", "medium", "high", "default")
-AUX_ROLE = "digest"
 
 DIGEST_SYSTEM = """You are a note-taker for an interpretability benchmark. You are given raw \
 readouts from an activation lens applied to a language model while it read a passage you cannot \

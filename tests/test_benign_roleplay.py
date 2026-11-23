@@ -714,12 +714,9 @@ def test_summary_with_accepted_refusals(tmp_path: Path) -> None:
 
 
 def test_cli_passes_accept_refused_flag() -> None:
-    import argparse
+    from hallucination_bench.cli import build_parser
 
-    from hallucination_bench.evals.benign_roleplay import cli as brcli
-
-    p = argparse.ArgumentParser()
-    brcli.register(p.add_subparsers(dest="cmd"))
+    p = build_parser()
     a = p.parse_args(["benign-roleplay", "report", "--accept-refused-as-flagged"])
     assert a.accept_refused_as_flagged is True
     assert p.parse_args(["benign-roleplay", "report"]).accept_refused_as_flagged is False

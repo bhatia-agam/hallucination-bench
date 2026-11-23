@@ -5,7 +5,7 @@ description = "HallucinationBench v2: types and severities of hallucination in a
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-dependencies = ["anthropic>=0.70", "openai>=1.50", "numpy>=1.26"]
+dependencies = ["anthropic>=0.70", "openai>=1.50", "numpy>=1.26", "pydra-config>=0.0.17"]
 
 [project.scripts]
 hbench = "hallucination_bench.cli:main"

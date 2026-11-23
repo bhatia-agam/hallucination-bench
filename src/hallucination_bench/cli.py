@@ -1,23 +1,54 @@
-"""``hbench run|calibrate|report|consistency-v2|pilot-dump|pilot-dump-v2|units-v2``."""
+"""``hbench <command> key=value ...``: ``run``, ``calibrate``, ``report``, ``consistency-v2``,
+``pilot-dump``, ``pilot-dump-v2``, ``units-v2``, ``index``, ``final`` and the evals' own commands.
+Every command is a ``pydra.Config`` (``command.Command``): keys and defaults in ``__init__``,
+types in ``finalize()``; ``--show`` prints the resolved config, ``--help`` lists the keys."""
 
 # The shared commands and helpers live here. An eval with its own subcommands keeps them in
-# ``evals/<eval>/cli.py`` (``register(sub)``, listed in EVAL_CLIS); an eval with its own driver
+# ``evals/<eval>/cli.py`` (a ``COMMANDS`` table, listed in EVAL_CLIS); an eval with its own driver
 # behind ``run|report --eval`` keeps that in ``evals/<eval>/cli.py`` too (plan 0012 D2).
 
-import argparse
+import copy
 import importlib
 import json
 import sys
+import textwrap
 from pathlib import Path
+from typing import Any
+
+import pydra
 
 from hallucination_bench import DATA, paths
+from hallucination_bench.command import (
+    EXIT_USAGE,
+    HELP_FLAGS,
+    Command,
+    UsageError,
+    aliased,
+    boolean,
+    choice,
+    help_text,
+    integer,
+    many,
+    number,
+    optional,
+    parse,
+    text,
+    usage,
+)
+from hallucination_bench.command import show as show_text
 from hallucination_bench.llm import DEFAULT_EFFORT, JudgeConfigError
 
 DEFAULT_MODEL = "claude-opus-5-5"
 INDEX_METHODS = DATA / "index" / "methods.json"  # plan 0013: method <-> arm mapping
 READOUTS_FILE = "hallucination.jsonl"
+# Descriptive names for the values the index is built on. Each is replaced by the value it
+# stands for when the command line is parsed, so arm.json, caches, manifests and reports record
+# the value itself, exactly as a run started with the value does.
+MAP_PROMPT_NAMES = {"current": "claimmap-v2.9"}  # the claim-map prompt the index uses
+BANK_NAMES = {"main": "x3"}  # the chat question bank the index's main family runs on
+INDEX_MANIFEST = DATA / "index" / "v8_manifest.json"  # the manifest of the results of record
 AM_EVAL = "agentic_misalignment"  # plan 0008: its own driver (dispatched first in run / report)
-# modules exposing ``register(sub)``: their subcommands follow the shared ones, in this order
+# modules exposing ``COMMANDS``: their subcommands follow the shared ones, in this order
 EVAL_CLIS: list[str] = [
     "hallucination_bench.evals.overrefusal.cli",  # plan 0015
     "hallucination_bench.evals.benign_roleplay.cli",  # plan 0023
@@ -32,7 +63,7 @@ def _effort(s: str) -> str | None:
     return None if s in ("", "none", "default") else s
 
 
-def resolve_arms(args: argparse.Namespace) -> list[tuple[str, Path]]:
+def resolve_arms(args: Command) -> list[tuple[str, Path]]:
     arms: list[tuple[str, Path]] = []
     for a in args.arm or []:
         if "=" not in a:
@@ -62,7 +93,7 @@ def resolve_arms(args: argparse.Namespace) -> list[tuple[str, Path]]:
     return arms
 
 
-def _excuse_verifier(args: argparse.Namespace, map_prompt: str) -> str | None:
+def _excuse_verifier(args: Command, map_prompt: str) -> str | None:
     """Plan 0029 Amendment 2: ``--excuse-verifier`` (default: ``cverify-v1`` for single-call
     claimmap-v2.9 roots, off otherwise, including any ``--anchor v5c`` run; ``off`` disables it
     for diagnostics). An explicit verifier with ``--anchor v5c`` is refused by
@@ -83,7 +114,7 @@ def _excuse_verifier(args: argparse.Namespace, map_prompt: str) -> str | None:
     return flag
 
 
-def _models(args: argparse.Namespace):
+def _models(args: Command):
     from hallucination_bench.evals.wsbench_chat.run import Models
 
     map_prompt = getattr(args, "map_prompt", None) or "claimmap-v2.7"
@@ -101,7 +132,7 @@ def _models(args: argparse.Namespace):
     )
 
 
-def _stages(args: argparse.Namespace) -> list[str]:
+def _stages(args: Command) -> list[str]:
     """``--stages`` (default: every stage); ``--skip-classify`` keeps its plan-0001 meaning
     (summary, span and verify only) when ``--stages`` is not given."""
     from hallucination_bench.evals.wsbench_chat.run import EXTRA_STAGES, STAGES, expand_stages
@@ -123,7 +154,7 @@ def _items(s: str | None) -> list[str] | None:
     return [x.strip() for x in s.split(",") if x.strip()] if s else None
 
 
-def _apply_bank(args: argparse.Namespace, *, readouts: bool = False) -> None:
+def _apply_bank(args: Command, *, readouts: bool = False) -> None:
     """``--bank`` (plans 0028 / 0029): point the wsbench_chat bank at a named bank; with
     ``readouts`` (``run``), ``--bank x3`` and neither ``--arm`` nor ``--readouts-root``, the
     readouts default to ``paths.X3_READOUTS`` ($HBENCH_X3_READOUTS). An x3 run records the bank
@@ -142,7 +173,7 @@ def _apply_bank(args: argparse.Namespace, *, readouts: bool = False) -> None:
         args.readouts_root = str(paths.X3_READOUTS)
 
 
-def cmd_run(args: argparse.Namespace) -> int:
+def cmd_run(args: Command) -> int:
     _apply_bank(args, readouts=True)
     if getattr(args, "eval", None) == AM_EVAL:
         from hallucination_bench.evals.agentic_misalignment import cli as amcli
@@ -189,7 +220,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_run_joint(args: argparse.Namespace, arms: list, models, out: Path) -> int:
+def _cmd_run_joint(args: Command, arms: list, models, out: Path) -> int:
     """Plan 0029 §3.7: ``hbench run --joint``: the joint 11-layer cells of each ``--arms``
     target (sources: ``--joint-from`` in precedence order, default the arm itself)."""
     from hallucination_bench.evals.wsbench_chat import run as wrun
@@ -200,7 +231,8 @@ def _cmd_run_joint(args: argparse.Namespace, arms: list, models, out: Path) -> i
         if len(arms) != 1:
             raise SystemExit("--joint-from needs exactly one target arm (--arms)")
         src_names = [x.strip() for x in args.joint_from.split(",") if x.strip()]
-        args2 = argparse.Namespace(**{**vars(args), "arms": ",".join(src_names)})
+        args2 = copy.copy(args)
+        args2.arms = ",".join(src_names)
         paths |= dict(resolve_arms(args2))
     rc = 0
     for name, _p in arms:
@@ -254,7 +286,7 @@ def _print_summary(name: str, s: dict) -> None:
     )
 
 
-def cmd_calibrate(args: argparse.Namespace) -> int:
+def cmd_calibrate(args: Command) -> int:
     from hallucination_bench import calibrate
 
     if args.taxonomy == "v2":
@@ -278,7 +310,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
-def _calibrate_v2(args: argparse.Namespace) -> int:
+def _calibrate_v2(args: Command) -> int:
     from hallucination_bench import calibrate_v2
 
     res = calibrate_v2.run(
@@ -308,7 +340,7 @@ def _index_dest(out: Path, judge_model: str) -> Path:
     return out / "index" / model_slug(judge_model)
 
 
-def cmd_index(args: argparse.Namespace) -> int:
+def cmd_index(args: Command) -> int:
     from hallucination_bench import index
 
     out = Path(args.out)
@@ -359,7 +391,7 @@ def cmd_index(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_report(args: argparse.Namespace) -> int:
+def _cmd_report(args: Command) -> int:
     _apply_bank(args)
     if getattr(args, "eval", None) == AM_EVAL:
         from hallucination_bench.evals.agentic_misalignment import cli as amcli
@@ -397,7 +429,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_consistency_v2(args: argparse.Namespace) -> int:
+def cmd_consistency_v2(args: Command) -> int:
     from hallucination_bench import consistency_v2
 
     if args.rescore:
@@ -423,7 +455,7 @@ def cmd_consistency_v2(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_pilot_dump(args: argparse.Namespace) -> int:
+def cmd_pilot_dump(args: Command) -> int:
     from hallucination_bench import report
     from hallucination_bench.calibrate import validate_case
 
@@ -449,7 +481,7 @@ def cmd_pilot_dump(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_pilot_dump_v2(args: argparse.Namespace) -> int:
+def cmd_pilot_dump_v2(args: Command) -> int:
     from hallucination_bench import report_v2
     from hallucination_bench.calibrate_v2 import validate_case
 
@@ -470,7 +502,7 @@ def cmd_pilot_dump_v2(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_units_v2(args: argparse.Namespace) -> int:
+def cmd_units_v2(args: Command) -> int:
     """Fill each case's ``gold.units`` with the production units (leaf null) for labelling."""
     from hallucination_bench.calibrate_v2 import skeleton
 
@@ -489,40 +521,57 @@ def _write_jsonl(dest: Path, rows: list[dict]) -> None:
             fh.write(json.dumps(c, ensure_ascii=False) + "\n")
 
 
-def _common(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--out", default="outputs", help="output root (default: outputs)")
-    p.add_argument("--judge-model", default=DEFAULT_MODEL)
-    p.add_argument(
-        "--effort",
-        default=DEFAULT_EFFORT,
-        help="Anthropic output_config.effort (default low; 'none' omits)",
+# ---------------------------------------------------------------------------------- key groups
+# Keys several commands share, added in ``__init__`` (the names are the old flags' names with
+# dashes turned to underscores).
+
+
+def judge_keys(c: Command) -> None:
+    """Where the outputs go and how the judge is called."""
+    c.key("out", "outputs", text, "output root")
+    c.key("judge_model", DEFAULT_MODEL, text, "the judge model; it also names <out>/<eval>/<model>")
+    c.key("effort", DEFAULT_EFFORT, text, "Anthropic output_config.effort ('none' omits it)")
+    c.key("rpm", 1500.0, number, "requests per minute, one pacer for the whole process")
+    c.key("concurrency", 64, integer, "judge calls in flight at once")
+
+
+def eval_key(c: Command) -> None:
+    c.key(
+        "eval",
+        "wsbench_chat",
+        choice(_eval_names),
+        "which bank and output root <out>/<eval>/ (story: plan 0007; agentic_misalignment: plan "
+        "0008, its own driver)",
     )
-    p.add_argument("--rpm", type=float, default=1500.0)
-    p.add_argument("--concurrency", type=int, default=64)
 
 
-def _eval(p: argparse.ArgumentParser) -> None:
+def bank_key(c: Command) -> None:
+    c.key(
+        "bank",
+        None,
+        optional(aliased(BANK_NAMES, choice("wsb", "x3"))),
+        "wsbench_chat only: wsb = the WSB 149 x 8 bank; x3 = plan 0028's 3x bank "
+        "($HBENCH_X3_BANK/items.json, default data/wsbench_chat_x3; run: readouts default "
+        f"{paths.X3_READOUTS} = $HBENCH_X3_READOUTS). Not given: the WSB bank, or "
+        "$HBENCH_WSBENCH_CHAT_ITEMS when set. main = the bank the index's main family runs on "
+        "(it stands for x3)",
+    )
+
+
+def anchor_key(c: Command) -> None:
+    c.key(
+        "anchor",
+        "none",
+        choice("none", "v5c"),
+        "claim map: none = single-call (no established spans, no verify); v5c = plan rev 12 "
+        "(v5c wrong spans passed as ESTABLISHED units)",
+    )
+
+
+def _eval_names() -> list[str]:
     from hallucination_bench.evals import EVALS
 
-    p.add_argument(
-        "--eval",
-        choices=sorted(EVALS),
-        default="wsbench_chat",
-        help="which bank / output root <out>/<eval>/ (story: plan 0007; agentic_misalignment: "
-        "plan 0008, its own driver; default wsbench_chat)",
-    )
-
-
-def _bank(p: argparse.ArgumentParser) -> None:
-    p.add_argument(
-        "--bank",
-        choices=("wsb", "x3"),
-        default=None,
-        help="wsbench_chat only: wsb = the WSB 149 x 8 bank; x3 = plan 0028's 3x bank "
-        "($HBENCH_X3_BANK/items.json, default data/wsbench_chat_x3; run: readouts default "
-        f"{paths.X3_READOUTS} = $HBENCH_X3_READOUTS). Default: the WSB bank, or "
-        "$HBENCH_WSBENCH_CHAT_ITEMS when set",
-    )
+    return sorted(EVALS)
 
 
 def _prompt_choices() -> list[str]:
@@ -531,294 +580,345 @@ def _prompt_choices() -> list[str]:
     return list(VERSIONS)
 
 
-def _map_prompt(p: argparse.ArgumentParser) -> None:
-    p.add_argument(
-        "--map-prompt",
-        choices=_prompt_choices(),
-        default="claimmap-v2.7",
-        help="claim-map prompt version (plan 0029; default claimmap-v2.7; recorded in arm.json, "
-        "a run that differs from an arm dir's record is refused; agentic_misalignment maps "
-        "claimmap-v2.8 / -v2.9 to their +am3 versions; v8 roots use claimmap-v2.9, plan 0029 "
-        "amendment)",
-    )
-
-
-def _excuse_verifier_flag(p: argparse.ArgumentParser) -> None:
+def _verifier_choices() -> list[str]:
     from hallucination_bench.judges import continuation_verifier as cv
 
-    p.add_argument(
-        "--excuse-verifier",
-        choices=(*cv.VERSIONS, "off"),
-        default=None,
-        help="plan 0029 amendment 2: the continuation verifier that decides the "
-        "continuation_miss excuse (default: cverify-v1 for claimmap-v2.9 roots, off otherwise "
-        "and under --anchor v5c, which refuses an explicit verifier with exit 3; "
-        "'off' = the v2.9 judge-tag rule, diagnostics only; recorded in arm.json, a run that "
-        "differs from an arm dir's record exits 3; hbench final requires cverify-v1)",
-    )
+    return [*cv.VERSIONS, "off"]
 
 
-def _anchor(p: argparse.ArgumentParser) -> None:
-    p.add_argument(
-        "--anchor",
-        choices=("none", "v5c"),
-        default="none",
-        help="claim map: none = single-call (default; no established spans, no verify); "
-        "v5c = plan rev 12 (v5c wrong spans passed as ESTABLISHED units)",
-    )
+# ------------------------------------------------------------------------------------ commands
 
 
-def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="hbench", description=__doc__)
-    sub = ap.add_subparsers(dest="cmd", required=True)
+class Run(Command):
+    about = "judge arms (summarise -> span -> verify -> map -> classify)"
 
-    r = sub.add_parser("run", help="judge arms (summarise -> span -> verify -> map -> classify)")
-    _common(r)
-    r.add_argument("--arm", action="append", help="name=path/to/hallucination.jsonl (repeatable)")
-    r.add_argument(
-        "--readouts-root",
-        help="DIR with <arm>/hallucination.jsonl subdirectories (agentic_misalignment: "
-        f"<arm>/agentic_misalignment.jsonl, default {paths.READOUTS_ROOT})",
-    )
-    r.add_argument("--arms", help="comma-separated arm names to keep")
-    r.add_argument("--layers", help="comma-separated layers (each arm judges those it has)")
-    r.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        help="judge only the first N non-empty cells per arm x layer (smoke); "
-        "agentic_misalignment map: N mapped cells per layer, drawn among the detection "
-        "positives",
-    )
-    r.add_argument(
-        "--sample-seed",
-        type=int,
-        default=None,
-        help="with --limit: draw the N cells per arm x layer by a seeded shuffle instead of the "
-        "first N (plan 0029 pilots: seeded, stratified by layer)",
-    )
-    r.add_argument(
-        "--items",
-        default=None,
-        help="agentic_misalignment only: comma-separated item ids to judge (pilot)",
-    )
-    r.add_argument("--summarizer-model", default=None)
-    r.add_argument("--classifier-model", default=None)
-    r.add_argument("--map-model", default=None, help="claim-map (:M) judge (default: judge)")
-    _map_prompt(r)
-    _excuse_verifier_flag(r)
-    r.add_argument(
-        "--situation-model",
-        default=None,
-        help="agentic_misalignment, v8 roots: the amsit-v2 situation judge (--stages situation; "
-        "default claude-sonnet-5-5)",
-    )
-    r.add_argument(
-        "--joint",
-        action="store_true",
-        help="plan 0029: judge the joint 11-layer cells (sample 0 of every layer in one call; "
-        "needs --map-prompt claimmap-v2.8 or later (v8: claimmap-v2.9); agentic_misalignment: "
-        "same as --stages joint)",
-    )
-    r.add_argument(
-        "--joint-from",
-        default=None,
-        help="with --joint (chat / story): the source arms in precedence order (each layer "
-        "from the first that has it, the index's rule); default the target arm itself",
-    )
-    _anchor(r)
-    _eval(r)
-    _bank(r)
-    r.add_argument(
-        "--stages",
-        default=None,
-        help="comma-separated stages that may call the API: summary,span,verify,classify,map,"
-        "cverify (default: all; dependencies are added: map runs summary first if missing, and "
-        "span only under --anchor v5c; cverify = the continuation verifier after map, v2.9 "
-        "verifier roots only; single-call map also calls span on a seeded 10%% item "
-        "subsample for the v5c comparison). agentic_misalignment: detect,summ,verify,map,intent,"
-        "cverify (verify = Stage H, the headline verifier; default all; no dependencies are "
-        "added, unselected stages are cache-only)",
-    )
-    r.add_argument("--allow-missing", action="store_true")
-    r.add_argument(
-        "--rebuild",
-        action="store_true",
-        help="regenerate cells.jsonl/summary.json from the cache (no API calls)",
-    )
-    r.add_argument(
-        "--skip-classify",
-        action="store_true",
-        help="summary + span + verify only (pilot); ignored when --stages is given",
-    )
-    r.add_argument(
-        "--show-prompts",
-        type=int,
-        default=0,
-        metavar="K",
-        help="write the prompts of the first K cells per arm x layer to <arm>/prompts_sample.txt",
-    )
-    r.set_defaults(fn=cmd_run)
-
-    c = sub.add_parser("calibrate", help="score the classifier on calibration cases")
-    _common(c)
-    c.add_argument("--split", choices=("dev", "heldout"), required=True)
-    c.add_argument(
-        "--taxonomy",
-        choices=("v1", "v2"),
-        default="v1",
-        help="v1: the taxonomy-v1 classifier on {split}.jsonl; v2: the claim map on "
-        "{split}_v2.jsonl",
-    )
-    c.add_argument("--classifier-model", default=None)
-    c.add_argument("--map-model", default=None)
-    c.add_argument(
-        "--prompt",
-        choices=_prompt_choices(),
-        default="claimmap-v2.7",
-        help="--taxonomy v2: the claim-map prompt version (plan 0029)",
-    )
-    _anchor(c)
-    c.add_argument("--repeats", type=int, default=2)
-    c.add_argument("--cases", default=None, help="override the cases file")
-    c.set_defaults(fn=cmd_calibrate)
-
-    rp = sub.add_parser("report", help="cross-arm report + audit samples")
-    rp.add_argument("--out", default="outputs")
-    rp.add_argument("--judge-model", default=DEFAULT_MODEL)
-    rp.add_argument("--no-rebuild", action="store_true")
-    rp.add_argument(
-        "--view", choices=("v1", "v2"), default="v1", help="v2: the claim-map report (plan 0002)"
-    )
-    rp.add_argument("--audit-n", type=int, default=None, help="per leaf; default 15 (v1) / 10 (v2)")
-    rp.add_argument("--audit-verdict-n", type=int, default=20, help="v2: audit samples per verdict")
-    rp.add_argument("--seed", type=int, default=0)
-    rp.add_argument(
-        "--readouts-root",
-        default=None,
-        help="agentic_misalignment only: DIR with <arm>/agentic_misalignment.jsonl (default "
-        f"{paths.READOUTS_ROOT}); ignored by the other evals",
-    )
-    _eval(rp)
-    _bank(rp)
-    rp.set_defaults(fn=_cmd_report)
-
-    cs = sub.add_parser(
-        "consistency-v2", help="claim-map judge consistency: two fresh :M calls per sampled cell"
-    )
-    _common(cs)
-    cs.add_argument("--arms", default=None, help="arm:layer,... e.g. s3d-rl600:44,jlens:44")
-    cs.add_argument(
-        "--rescore",
-        action="store_true",
-        help="re-score the cached r0/r1 cells of this prompt version (no API calls)",
-    )
-    cs.add_argument("--n", type=int, default=50, help="cells per arm:layer (default 50)")
-    cs.add_argument("--seed", type=int, default=0)
-    cs.add_argument(
-        "--readouts-root",
-        default=str(paths.READOUTS_ROOT),
-        help="DIR with <arm>/hallucination.jsonl",
-    )
-    cs.add_argument("--summarizer-model", default=None)
-    cs.add_argument("--classifier-model", default=None)
-    cs.add_argument("--map-model", default=None)
-    cs.set_defaults(fn=cmd_consistency_v2)
-
-    pd = sub.add_parser("pilot-dump", help="sample pilot spans as unlabelled calibration cases")
-    pd.add_argument("--out", default="outputs")
-    pd.add_argument("--judge-model", default=DEFAULT_MODEL)
-    pd.add_argument("--arms", required=True)
-    pd.add_argument("--layers", default=None)
-    pd.add_argument("--per-stratum", type=int, default=5, help="spans per arm x grounding")
-    pd.add_argument("--seed", type=int, default=0)
-    pd.add_argument("--dest", required=True)
-    pd.set_defaults(fn=cmd_pilot_dump)
-
-    p2 = sub.add_parser(
-        "pilot-dump-v2", help="dump real cells with production units for v2 hand-labelling"
-    )
-    p2.add_argument("--out", default="outputs")
-    p2.add_argument("--judge-model", default=DEFAULT_MODEL)
-    p2.add_argument("--arms", required=True)
-    p2.add_argument("--layers", default=None)
-    p2.add_argument("--per-stratum", type=int, default=3, help="cells per arm x v5c cell class")
-    p2.add_argument("--seed", type=int, default=0)
-    p2.add_argument("--dest", required=True)
-    p2.set_defaults(fn=cmd_pilot_dump_v2)
-
-    u2 = sub.add_parser(
-        "units-v2", help="fill v2 cases' gold.units with the production unit split (leaf null)"
-    )
-    u2.add_argument("--cases", required=True)
-    u2.add_argument("--dest", required=True)
-    u2.set_defaults(fn=cmd_units_v2)
-
-    ix = sub.add_parser(
-        "index",
-        help="the hallucination index (hindex-v8, plan 0029; the only version): one row per "
-        "(method, layer)",
-    )
-    ix.add_argument("--out", default="outputs", help="output root of the default sources")
-    ix.add_argument("--judge-model", default=DEFAULT_MODEL)
-    for flag, default in (
-        ("--main-root", "<out>/wsbench_chat/<model>"),
-        ("--story-root", "<out>/story/<model>"),
-        ("--am-root", "<out>/agentic_misalignment/<model>"),
-        ("--um-root", "<out>/sibling/um (country at label/, others at <domain>/label/)"),
-    ):
-        ix.add_argument(flag, action="append", help=f"repeatable; replaces the default {default}")
-    ix.add_argument(
-        "--am-situation-root",
-        action="append",
-        help="repeatable; AM v8 root(s) whose arm dirs hold situation.jsonl "
-        "(default: the --am-root / <out>/agentic_misalignment/<model>)",
-    )
-    for flag, var in (
-        ("--overrefusal-root", "HBENCH_SAFETY_OR_OUT"),
-        ("--benign-roleplay-root", "HBENCH_SAFETY_BR_OUT"),
-    ):
-        ix.add_argument(
-            flag,
-            action="append",
-            help=f"repeatable; a dir holding index_counts.jsonl (+ index_meta.json); default: "
-            f"${var} only when set (opt-in, plan 0019), else the family is absent",
+    def __init__(self) -> None:
+        super().__init__()
+        judge_keys(self)
+        self.key("arm", None, many, "name=path/to/hallucination.jsonl (repeatable)")
+        self.key(
+            "readouts_root",
+            None,
+            optional(text),
+            "DIR with <arm>/hallucination.jsonl subdirectories (agentic_misalignment: "
+            f"<arm>/agentic_misalignment.jsonl, default {paths.READOUTS_ROOT})",
         )
-    ix.add_argument(
-        "--version",
-        choices=("v8",),
-        default="v8",
-        help="v8 (default and the only version): hindex-v8 (plan 0029: main 9, am_claims 3, "
-        "am_situation 3, sibling 1, story 1, "
-        "overrefusal 1, benign_roleplay 2 (no cheating: archived, plan 0029 amendment 3); "
-        "per-layer rows + a joint row; "
-        "claimmap-v2.8+ roots, claimmap-v2.9 for the final run; needs a `refusal_claims` "
-        "--overrefusal-root (offtopic_index/, plan 0022) and a `prompts` "
-        "--benign-roleplay-root (`hbench benign-roleplay index-export`, plan 0027))",
+        self.key("arms", None, optional(text), "comma-separated arm names to keep")
+        self.key(
+            "layers", None, optional(text), "comma-separated layers (each arm judges those it has)"
+        )
+        self.key(
+            "limit",
+            None,
+            optional(integer),
+            "judge only the first N non-empty cells per arm x layer (smoke); agentic_misalignment "
+            "map: N mapped cells per layer, drawn among the detection positives",
+        )
+        self.key(
+            "sample_seed",
+            None,
+            optional(integer),
+            "with limit=: draw the N cells per arm x layer by a seeded shuffle instead of the "
+            "first N (plan 0029 pilots: seeded, stratified by layer)",
+        )
+        self.key(
+            "items",
+            None,
+            optional(text),
+            "agentic_misalignment only: comma-separated item ids to judge (pilot)",
+        )
+        self.key("summarizer_model", None, optional(text), "the summary model (default: judge)")
+        self.key("classifier_model", None, optional(text), "the classifier model (default: judge)")
+        self.key("map_model", None, optional(text), "claim-map (:M) judge (default: judge)")
+        self.key(
+            "map_prompt",
+            "claimmap-v2.7",
+            aliased(MAP_PROMPT_NAMES, choice(_prompt_choices)),
+            "claim-map prompt version (plan 0029; recorded in arm.json, a run that differs from "
+            "an arm dir's record is refused; agentic_misalignment maps claimmap-v2.8 / -v2.9 to "
+            "their +am3 versions; v8 roots use claimmap-v2.9, plan 0029 amendment). current = the "
+            "prompt the index uses (it stands for claimmap-v2.9)",
+        )
+        self.key(
+            "excuse_verifier",
+            None,
+            optional(choice(_verifier_choices)),
+            "plan 0029 amendment 2: the continuation verifier that decides the continuation_miss "
+            "excuse (not given: cverify-v1 for claimmap-v2.9 roots, off otherwise and under "
+            "anchor=v5c, which refuses an explicit verifier with exit 3; 'off' = the v2.9 "
+            "judge-tag rule, diagnostics only; recorded in arm.json, a run that differs from an "
+            "arm dir's record exits 3; hbench final requires cverify-v1)",
+        )
+        self.key(
+            "situation_model",
+            None,
+            optional(text),
+            "agentic_misalignment, v8 roots: the amsit-v2 situation judge (stages=situation; "
+            "default claude-sonnet-5-5)",
+        )
+        self.key(
+            "joint",
+            False,
+            boolean,
+            "plan 0029: judge the joint 11-layer cells (sample 0 of every layer in one call; "
+            "needs map_prompt=claimmap-v2.8 or later (v8: claimmap-v2.9); agentic_misalignment: "
+            "same as stages=joint)",
+        )
+        self.key(
+            "joint_from",
+            None,
+            optional(text),
+            "with --joint (chat / story): the source arms in precedence order (each layer from "
+            "the first that has it, the index's rule); default the target arm itself",
+        )
+        anchor_key(self)
+        eval_key(self)
+        bank_key(self)
+        self.key(
+            "stages",
+            None,
+            optional(text),
+            "comma-separated stages that may call the API: summary,span,verify,classify,map,"
+            "cverify (default: all; dependencies are added: map runs summary first if missing, "
+            "and span only under anchor=v5c; cverify = the continuation verifier after map, v2.9 "
+            "verifier roots only; single-call map also calls span on a seeded 10% item subsample "
+            "for the v5c comparison). agentic_misalignment: detect,summ,verify,map,intent,cverify "
+            "(verify = Stage H, the headline verifier; default all; no dependencies are added, "
+            "unselected stages are cache-only)",
+        )
+        self.key("allow_missing", False, boolean, "judge a readouts file that lacks bank cells")
+        self.key(
+            "rebuild",
+            False,
+            boolean,
+            "regenerate cells.jsonl/summary.json from the cache (no API calls)",
+        )
+        self.key(
+            "skip_classify",
+            False,
+            boolean,
+            "summary + span + verify only (pilot); ignored when stages= is given",
+        )
+        self.key(
+            "show_prompts",
+            0,
+            integer,
+            "write the prompts of the first K cells per arm x layer to <arm>/prompts_sample.txt",
+        )
+
+    def execute(self) -> int:
+        return cmd_run(self)
+
+
+class Calibrate(Command):
+    about = "score the classifier on calibration cases"
+
+    def __init__(self) -> None:
+        super().__init__()
+        judge_keys(self)
+        self.key("split", pydra.REQUIRED, choice("dev", "heldout"), "the calibration split")
+        self.key(
+            "taxonomy",
+            "v1",
+            choice("v1", "v2"),
+            "v1: the taxonomy-v1 classifier on {split}.jsonl; v2: the claim map on "
+            "{split}_v2.jsonl",
+        )
+        self.key(
+            "classifier_model", None, optional(text), "taxonomy=v1: the model (default: judge)"
+        )
+        self.key("map_model", None, optional(text), "taxonomy=v2: the model (default: judge)")
+        self.key(
+            "prompt",
+            "claimmap-v2.7",
+            aliased(MAP_PROMPT_NAMES, choice(_prompt_choices)),
+            "taxonomy=v2: the claim-map prompt version (plan 0029)",
+        )
+        anchor_key(self)
+        self.key("repeats", 2, integer, "calls per case")
+        self.key("cases", None, optional(text), "override the cases file")
+
+    def execute(self) -> int:
+        return cmd_calibrate(self)
+
+
+class Report(Command):
+    about = "cross-arm report + audit samples"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("out", "outputs", text, "output root")
+        self.key("judge_model", DEFAULT_MODEL, text, "the judge model of the run to report")
+        self.key("no_rebuild", False, boolean, "read the existing summaries instead of rebuilding")
+        self.key("view", "v1", choice("v1", "v2"), "v2: the claim-map report (plan 0002)")
+        self.key(
+            "audit_n", None, optional(integer), "audit samples per leaf; default 15 (v1) / 10 (v2)"
+        )
+        self.key("audit_verdict_n", 20, integer, "v2: audit samples per verdict")
+        self.key("seed", 0, integer, "seed of the audit sample")
+        self.key(
+            "readouts_root",
+            None,
+            optional(text),
+            "agentic_misalignment only: DIR with <arm>/agentic_misalignment.jsonl (default "
+            f"{paths.READOUTS_ROOT}); ignored by the other evals",
+        )
+        eval_key(self)
+        bank_key(self)
+
+    def execute(self) -> int:
+        return _cmd_report(self)
+
+
+class ConsistencyV2(Command):
+    about = "claim-map judge consistency: two fresh :M calls per sampled cell"
+
+    def __init__(self) -> None:
+        super().__init__()
+        judge_keys(self)
+        self.key("arms", None, optional(text), "arm:layer,... e.g. s3d-rl600:44,jlens:44")
+        self.key(
+            "rescore",
+            False,
+            boolean,
+            "re-score the cached r0/r1 cells of this prompt version (no API calls)",
+        )
+        self.key("n", 50, integer, "cells per arm:layer")
+        self.key("seed", 0, integer, "seed of the cell sample")
+        self.key(
+            "readouts_root", str(paths.READOUTS_ROOT), text, "DIR with <arm>/hallucination.jsonl"
+        )
+        self.key("summarizer_model", None, optional(text), "the summary model (default: judge)")
+        self.key("classifier_model", None, optional(text), "the classifier model (default: judge)")
+        self.key("map_model", None, optional(text), "the claim-map model (default: judge)")
+
+    def execute(self) -> int:
+        return cmd_consistency_v2(self)
+
+
+class PilotDump(Command):
+    about = "sample pilot spans as unlabelled calibration cases"
+    stratum = (5, "spans per arm x grounding")
+
+    def __init__(self) -> None:
+        super().__init__()
+        n, meaning = self.stratum
+        self.key("out", "outputs", text, "output root of the run to sample")
+        self.key("judge_model", DEFAULT_MODEL, text, "the judge model of that run")
+        self.key("arms", pydra.REQUIRED, text, "comma-separated arm names")
+        self.key("layers", None, optional(text), "comma-separated layers (default: all)")
+        self.key("per_stratum", n, integer, meaning)
+        self.key("seed", 0, integer, "seed of the sample")
+        self.key("dest", pydra.REQUIRED, text, "the JSONL file to write")
+
+    def execute(self) -> int:
+        return cmd_pilot_dump(self)
+
+
+class PilotDumpV2(PilotDump):
+    about = "dump real cells with production units for v2 hand-labelling"
+    stratum = (3, "cells per arm x v5c cell class")
+
+    def execute(self) -> int:
+        return cmd_pilot_dump_v2(self)
+
+
+class UnitsV2(Command):
+    about = "fill v2 cases' gold.units with the production unit split (leaf null)"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("cases", pydra.REQUIRED, text, "the v2 cases file to read")
+        self.key("dest", pydra.REQUIRED, text, "the JSONL file to write")
+
+    def execute(self) -> int:
+        return cmd_units_v2(self)
+
+
+class Index(Command):
+    about = (
+        "the hallucination index (hindex-v8, plan 0029; the only version): one row per "
+        "(method, layer)"
     )
-    ix.add_argument("--methods", default=str(INDEX_METHODS), help="method <-> arm mapping")
-    ix.add_argument("--dest", default=None, help="default <out>/index/<model>/")
-    ix.add_argument("--workers", type=int, default=8, help="processes over arm dirs")
-    ix.set_defaults(fn=cmd_index)
 
-    fn = sub.add_parser(
-        "final",
-        help="plan 0029: check the v8 manifest (sha256s, completeness, one prompt version), "
-        "build hindex-v8 from exactly its roots and draw the final plots",
+    def __init__(self) -> None:
+        super().__init__()
+        self.key("out", "outputs", text, "output root of the default sources")
+        self.key("judge_model", DEFAULT_MODEL, text, "the judge model of the default sources")
+        for name, default in (
+            ("main_root", "<out>/wsbench_chat/<model>"),
+            ("story_root", "<out>/story/<model>"),
+            ("am_root", "<out>/agentic_misalignment/<model>"),
+            ("um_root", "<out>/sibling/um (country at label/, others at <domain>/label/)"),
+        ):
+            self.key(name, None, many, f"repeatable; replaces the default {default}")
+        self.key(
+            "am_situation_root",
+            None,
+            many,
+            "repeatable; AM v8 root(s) whose arm dirs hold situation.jsonl "
+            "(default: the am_root / <out>/agentic_misalignment/<model>)",
+        )
+        for name, var in (
+            ("overrefusal_root", "HBENCH_SAFETY_OR_OUT"),
+            ("benign_roleplay_root", "HBENCH_SAFETY_BR_OUT"),
+        ):
+            self.key(
+                name,
+                None,
+                many,
+                "repeatable; a dir holding index_counts.jsonl (+ index_meta.json); default: "
+                f"${var} only when set (opt-in, plan 0019), else the family is absent",
+            )
+        self.key(
+            "version",
+            "v8",
+            choice("v8"),
+            "v8 (the only version): hindex-v8 (plan 0029: main 9, am_claims 3, am_situation 3, "
+            "sibling 1, story 1, overrefusal 1, benign_roleplay 2 (no cheating: archived, plan "
+            "0029 amendment 3); per-layer rows + a joint row; claimmap-v2.8+ roots, "
+            "claimmap-v2.9 for the final run; needs a `refusal_claims` overrefusal_root "
+            "(offtopic_index/, plan 0022) and a `prompts` benign_roleplay_root (`hbench "
+            "benign-roleplay index-export`, plan 0027))",
+        )
+        self.key("methods", str(INDEX_METHODS), text, "method <-> arm mapping")
+        self.key(
+            "dest",
+            None,
+            optional(text),
+            "where index.json / index.md go (default <out>/index/<model>/)",
+        )
+        self.key("workers", 8, integer, "processes over arm dirs")
+
+    def execute(self) -> int:
+        return cmd_index(self)
+
+
+class Final(Command):
+    about = (
+        "plan 0029: check the v8 manifest (sha256s, completeness, one prompt version), build "
+        "hindex-v8 from exactly its roots and draw the final plots"
     )
-    fn.add_argument("--manifest", required=True, help="data/index/v8_manifest.json")
-    fn.add_argument("--out", default="outputs/final", help="index.json / index.md destination")
-    fn.add_argument("--plots", default="plots/final", help="plot destination")
-    fn.add_argument("--methods", default=str(INDEX_METHODS), help="method <-> arm mapping")
-    fn.add_argument("--workers", type=int, default=8)
-    fn.set_defaults(fn=cmd_final)
 
-    for mod in EVAL_CLIS:
-        importlib.import_module(mod).register(sub)
-    return ap
+    def __init__(self) -> None:
+        super().__init__()
+        self.key(
+            "manifest",
+            str(INDEX_MANIFEST),
+            text,
+            "the frozen manifest to check and build from (default: the shipped manifest of the "
+            "results of record)",
+        )
+        self.key("out", "outputs/final", text, "index.json / index.md destination")
+        self.key("plots", "plots/final", text, "plot destination")
+        self.key("methods", str(INDEX_METHODS), text, "method <-> arm mapping")
+        self.key("workers", 8, integer, "processes over arm dirs")
+
+    def execute(self) -> int:
+        return cmd_final(self)
 
 
-def cmd_final(args: argparse.Namespace) -> int:
+def cmd_final(args: Command) -> int:
     from hallucination_bench import final
 
     return final.main(
@@ -830,10 +930,102 @@ def cmd_final(args: argparse.Namespace) -> int:
     )
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+# a name -> a command, or (for an eval's own CLI) a group: its one-line meaning and its commands
+Group = tuple[str, dict[str, type[Command]]]
+COMMANDS: dict[str, type[Command] | Group] = {
+    "run": Run,
+    "calibrate": Calibrate,
+    "report": Report,
+    "consistency-v2": ConsistencyV2,
+    "pilot-dump": PilotDump,
+    "pilot-dump-v2": PilotDumpV2,
+    "units-v2": UnitsV2,
+    "index": Index,
+    "final": Final,
+}
+
+
+def commands() -> dict[str, type[Command] | Group]:
+    """Every subcommand: the shared ones, then each ``EVAL_CLIS`` module's ``COMMANDS``."""
+    out = dict(COMMANDS)
+    for mod in EVAL_CLIS:
+        out.update(importlib.import_module(mod).COMMANDS)
+    return out
+
+
+def _usage(prog: str, names: Any) -> str:
+    return f"usage: {prog} <{'|'.join(names)}> [key=value ...] [--show | --help]"
+
+
+def _listing(prog: str, table: dict[str, Any]) -> str:
+    lines = [_usage(prog, table), ""]
+    for name, entry in table.items():
+        about = entry[0] if isinstance(entry, tuple) else entry.about
+        first, *rest = textwrap.wrap(about, 76) or [""]
+        lines.append(f"  {name:<16} {first}")
+        lines += [f"  {'':<16} {x}" for x in rest]
+    return "\n".join([*lines, "", f"{prog} <command> --help lists a command's keys."])
+
+
+class _Help(Exception):
+    """``--help`` was asked for; ``str()`` is the text to print."""
+
+
+def _fail(prog: str, message: str, usage: str) -> SystemExit:
+    print(f"{usage}\n{prog}: error: {message}", file=sys.stderr)
+    return SystemExit(EXIT_USAGE)
+
+
+def _find(argv: list[str]) -> tuple[Command, list[str]]:
+    """The command ``argv`` names and the arguments left for it."""
+    prog, table = "hbench", commands()
+    while True:
+        if argv and argv[0] in HELP_FLAGS:
+            raise _Help(_listing(prog, table))
+        if not argv or argv[0] not in table:
+            what = f"unknown command {argv[0]!r}" if argv else "a command is required"
+            raise _fail(prog, what, _usage(prog, table))
+        prog, entry, argv = f"{prog} {argv[0]}", table[argv[0]], argv[1:]
+        if not isinstance(entry, tuple):
+            command = entry()
+            command.prog = prog
+            return command, argv
+        table = entry[1]
+
+
+def command_for(argv: list[str]) -> tuple[Command, bool]:
+    """``argv`` as a finalized command, and whether ``--show`` was given. A command line that
+    does not parse prints the reason and exits 2; ``--help`` prints the keys and exits 0."""
     try:
-        return args.fn(args)
+        command, rest = _find(list(argv))
+        if any(a in HELP_FLAGS for a in rest):
+            raise _Help(help_text(command))
+    except _Help as h:
+        print(h)
+        raise SystemExit(0) from None
+    try:
+        return command, parse(command, rest)
+    except UsageError as e:
+        raise _fail(command.prog, str(e), usage(command)) from None
+
+
+class _Parser:
+    def parse_args(self, argv: list[str]) -> Command:
+        return command_for(argv)[0]
+
+
+def build_parser() -> _Parser:
+    """For in-process callers: ``build_parser().parse_args(argv)`` is the finalized command."""
+    return _Parser()
+
+
+def main(argv: list[str] | None = None) -> int:
+    command, show = command_for(list(sys.argv[1:] if argv is None else argv))
+    if show:
+        print(show_text(command))
+        return 0
+    try:
+        return command.execute()
     except JudgeConfigError as e:
         print(f"JUDGE CONFIG ERROR: {e}", file=sys.stderr)
         return 3

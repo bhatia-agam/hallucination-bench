@@ -4,14 +4,14 @@ and every cached :M answer stay valid; rebuilding makes no API calls)."""
 import json
 
 import pytest
-from test_claimmap_v2 import MapFake, _run, e, prompt_quote, unit_lines
+from test_claim_map import MapFake, _run, e, prompt_quote, unit_lines
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import consistency_v2 as cons
-from hallucination_bench import report_v2
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_consistency as cons
+from hallucination_bench import claim_map_report
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 
@@ -124,7 +124,7 @@ def test_rebuild_after_the_merge_makes_no_calls(tmp_path, prose_readouts):
     leaves = {s["leaf"] for s in segs}
     assert "junk" in leaves and not leaves & {"non_claim", "off_topic"}
     assert {s["reason"] for s in segs if "Paris" in s["text"]} == {"off_topic"}
-    root = report_v2.report(out, "claude-opus-5-5", rebuild=False, audit_n=1, verdict_n=1)
+    root = claim_map_report.report(out, "claude-opus-5-5", rebuild=False, audit_n=1, verdict_n=1)
     md = (root / "report_v2.md").read_text()
     assert "Junk share by reason" in md and "| off_topic |" not in md.split("Junk share")[0][-50:]
 

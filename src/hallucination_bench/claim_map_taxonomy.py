@@ -1,7 +1,7 @@
-"""THE claim-map taxonomy (v2): leaves, groups, definitions, precedence, tags and decisions.
+"""THE claim-map taxonomy: leaves, groups, definitions, precedence, tags and decisions.
 
 Plan 0002 (``plans/0002-claim-map-taxonomy-v2.md``). This module is the single source of truth:
-the claim-map judge prompt (``judges/claimmap_v2.py``) is rendered from it by :func:`render`,
+the claim-map judge prompt (``judges/claim_map.py``) is rendered from it by :func:`render`,
 scoring and calibration read its enums, and tests assert the rendered prompt contains every
 leaf definition (:func:`definitions`).
 
@@ -18,7 +18,7 @@ contradicts it. Predictions get no category of their own (rev 16 rule 1). Rev 17
 quote its evidence: every incorrect segment carries ``contradicted_by`` and every ``correct``
 segment (except ``source = entailed``) carries ``supported_by``, a verbatim span of the
 conversation; code checks the quote and fails closed to ``unverifiable``
-(``judges/claimmap_v2.parse``).
+(``judges/claim_map.parse``).
 
 The prompt is rendered in two modes: single-call (the default; no established v5c spans, so
 rule 2 and the ``dispute`` tag are left out) and ``anchored`` (``--anchor v5c``: plan rev 12
@@ -104,16 +104,6 @@ JUDGE_GROUPS: tuple[str, ...] = (
     NON_CLAIM,
 )
 GROUPS: tuple[str, ...] = tuple(g for g in JUDGE_GROUPS if g != NON_CLAIM)
-GROUP_TITLES: dict[str, str] = {
-    HALLUCINATION: "hallucinations: wrong details and false claims (obviously contradicted)",
-    CO_ACTIVATION: "plausible co-activation: substitutions of a related object",
-    CORRECT: "correct content about the text (fidelity only)",
-    SUPPLEMENTARY: "supplementary world claims the conversation does not settle",
-    THINKY: "the model's own state, and unverifiable on-topic content",
-    UNSETTLED: "unsettled: ambiguous topic",
-    JUNK: "junk: non-claims and off-topic claims (rev 18)",
-    NON_CLAIM: "non-claims",
-}
 
 # code-assigned pseudo-leaves (never in the judge's enum)
 UNKNOWN_INCORRECT = "unknown_incorrect"

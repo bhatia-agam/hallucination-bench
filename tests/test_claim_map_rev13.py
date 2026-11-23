@@ -4,14 +4,14 @@ judging (no established spans, no verify), the v5c comparison and the pre-gate l
 import json
 
 import pytest
-from test_claimmap_v2 import V5C, MapFake, _cells, _rec, _run, e, prompt_quote, sp, unit_lines
+from test_claim_map import V5C, MapFake, _cells, _rec, _run, e, prompt_quote, sp, unit_lines
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import report_v2
-from hallucination_bench import taxonomy_v2 as tx
-from hallucination_bench.evals.wsbench_chat import bank, score_v2
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_report
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.evals.wsbench_chat import bank, claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 # ------------------------------------------------------------------ verdicts
@@ -235,10 +235,10 @@ def test_verdict_shares_rates_and_the_v5c_comparison():
         _rec("c", 44, [[("unverifiable", 8)]], cls="generic"),
         _nov5c(_rec("d", 44, [[("detail", 4), ("junk", 4)]])),
     ]
-    acc = score_v2.AccumulatorV2()
+    acc = claim_map_score.AccumulatorV2()
     for r in recs:
         acc.add(r)
-    b = score_v2.block(acc.cells, n_boot=50)
+    b = claim_map_score.block(acc.cells, n_boot=50)
     cv = {v: x["value"] for v, x in b["char_share_verdict"].items()}
     assert set(cv) == set(tx.VERDICT_ROWS)
     assert sum(cv.values()) == pytest.approx(1.0)
@@ -394,7 +394,7 @@ def test_report_writes_probe_candidates_and_marks_pre_gate(tmp_path, prose_reado
 
     out = tmp_path / "out"
     _run([("toy", prose_readouts)], out, MapFake({"map": mapper}), stages=["map"])
-    root = report_v2.report(out, "claude-opus-5-5", audit_n=2, verdict_n=3)
+    root = claim_map_report.report(out, "claude-opus-5-5", audit_n=2, verdict_n=3)
     rows = [json.loads(x) for x in (root / "probe_candidates.jsonl").read_text().splitlines()]
     assert rows and not (root / "substitution_pairs.jsonl").exists()
     keys = {"arm", "layer", "item", "pos", "leaf", "probe_target", "actual", "segment", "readout"}

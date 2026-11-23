@@ -7,13 +7,13 @@ import json
 
 import pytest
 from conftest import FakeLLM
-from test_claimmap_v2 import default_map
+from test_claim_map import default_map
 
-from hallucination_bench import calibrate_v2, cli
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import calibrate_claim_map, cli
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.evals.wsbench_chat import claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat import score_v2
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.llm import LLM, CallResult, JudgeConfigError, Usage, joint_llm
 
 V27, V28 = "claimmap-v2.7", "claimmap-v2.8"
@@ -149,12 +149,12 @@ def test_joint_note_names_every_layer():
 def test_leaf_rows_are_version_aware():
     assert tx.leaf_rows() == tx.ALL_LEAVES == tx.leaf_rows(V27)
     assert tx.leaf_rows(V28) == (*tx.LEAF_NAMES, tx.CONTINUATION_MISS, *tx.PSEUDO_LEAVES)
-    assert score_v2.leaf_rows() == score_v2.LEAF_ROWS
-    assert score_v2._layout(V27)[0] is score_v2.COLUMNS
-    cols8 = score_v2._layout(V28)[0]
-    assert "cs_continuation_miss" in cols8 and "cs_continuation_miss" not in score_v2.COLUMNS
-    assert score_v2.health_keys(V27) == score_v2.HEALTH_V2
-    assert score_v2.health_keys(V28)[-len(cm.PARSE_COUNTS_V28_EXTRA) :] == (
+    assert claim_map_score.leaf_rows() == claim_map_score.LEAF_ROWS
+    assert claim_map_score._layout(V27)[0] is claim_map_score.COLUMNS
+    cols8 = claim_map_score._layout(V28)[0]
+    assert "cs_continuation_miss" in cols8 and "cs_continuation_miss" not in claim_map_score.COLUMNS
+    assert claim_map_score.health_keys(V27) == claim_map_score.HEALTH_V2
+    assert claim_map_score.health_keys(V28)[-len(cm.PARSE_COUNTS_V28_EXTRA) :] == (
         cm.PARSE_COUNTS_V28_EXTRA
     )
 
@@ -229,7 +229,7 @@ def test_v28_chat_run_records_the_prompt_and_refuses_a_mixed_root(tmp_path, pros
 
 
 def test_v27_run_never_writes_map_prompt(tmp_path, prose_readouts):
-    from test_claimmap_v2 import MapFake
+    from test_claim_map import MapFake
 
     s = _run([("toy", prose_readouts)], tmp_path, MapFake(), wrun.Models())["toy"]
     assert "map_prompt" not in s["config"]["models"]
@@ -262,8 +262,8 @@ def test_calibrate_prompt_switches_the_render_fingerprint_and_rows():
     from hallucination_bench.units import split_cell
 
     units = cm.plain_units(split_cell(case["samples"])[0])
-    s7, _u7 = calibrate_v2.case_prompt(case, units)
-    s8, u8 = calibrate_v2.case_prompt(case, units, prompt=V28)
+    s7, _u7 = calibrate_claim_map.case_prompt(case, units)
+    s8, u8 = calibrate_claim_map.case_prompt(case, units, prompt=V28)
     assert s7 == cm.SYSTEM and s8 == S8.system and "continuation_text" in u8
     raw = {
         "units": [
@@ -277,12 +277,12 @@ def test_calibrate_prompt_switches_the_render_fingerprint_and_rows():
         ],
         "rationale": "r",
     }
-    segs, _ = calibrate_v2.case_parse(raw, units, case, prompt=V28)
+    segs, _ = calibrate_claim_map.case_parse(raw, units, case, prompt=V28)
     assert segs[0].leaf == tx.CONTINUATION_MISS
-    segs, _ = calibrate_v2.case_parse(raw, units, case)
+    segs, _ = calibrate_claim_map.case_parse(raw, units, case)
     assert segs[0].leaf == "detail"
-    assert calibrate_v2.result_stem("dev", prompt=V28) == "dev_claimmap-v2.8"
-    assert calibrate_v2.result_stem("dev") == "dev_claimmap-v2.7"
+    assert calibrate_claim_map.result_stem("dev", prompt=V28) == "dev_claimmap-v2.8"
+    assert calibrate_claim_map.result_stem("dev") == "dev_claimmap-v2.7"
 
 
 # ---------------------------------------------------------------- streaming client

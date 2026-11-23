@@ -1,4 +1,5 @@
-"""wsbench_chat metrics: the v5c headline plus the taxonomy metrics, with item-bootstrap CIs.
+"""wsbench_chat span metrics: the v5c headline plus the span-taxonomy metrics, with
+item-bootstrap CIs.
 
 Denominators (plan 0001, "Metrics"):
 
@@ -24,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from hallucination_bench import taxonomy as tx
+from hallucination_bench import span_taxonomy as tx
 from hallucination_bench.judges.v5c import SPECIFIC_CLASSES
 
 from .run import STAGES

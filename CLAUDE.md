@@ -44,8 +44,8 @@ src/hallucination_bench/
   readouts_check.py  `hbench readouts`: a readouts file against that plan before any judge call
                   (docs/producing_readouts.md: plan -> producer -> check -> judge -> index)
   summarizer.py   interp-v1 token-bag -> prose prompt (verbatim)
-  taxonomy.py     THE taxonomy (single source of truth; rendered into the classifier prompt)
-  taxonomy_v2.py  THE claim-map taxonomy (plan 0029: v2.7 objects untouched + parallel *_V28 text,
+  span_taxonomy.py  THE span taxonomy (single source of truth; rendered into the classifier prompt)
+  claim_map_taxonomy.py  THE claim-map taxonomy (plan 0029: v2.7 objects untouched + parallel *_V28 text,
                   render/definitions/rules/decision_text(version), SCORING_EXTRA continuation_miss,
                   leaf_rows(version)) (judge: 12 leaves / 8 groups; scoring, rev 18-19: 11 leaves /
                   7 groups / 6 VERDICTS (junk = non_claim + off_topic; model_state = thinky;
@@ -54,8 +54,8 @@ src/hallucination_bench/
                   decisions in CHOSEN; render(anchored) for single-call vs --anchor v5c)
   units.py        deterministic readout splitter (units R{i}.U{n}) + offset-returning locate
   judges/v5c.py   verbatim v5c span + verify prompts/parsers; claim_lists (quotes, checked vs tally)
-  judges/taxonomy_v1.py  classifier prompt, schema, validate, fail-closed parse
-  judges/claimmap_v2.py  claim-map prompt, schema, validate, parse -> segments (forced/disputed);
+  judges/span_classifier.py  classifier prompt, schema, validate, fail-closed parse
+  judges/claim_map.py  claim-map prompt, schema, validate, parse -> segments (forced/disputed);
                   plan 0029: VERSIONS registry (claimmap-v2.7 / -v2.8 / -v2.9 Spec), schema_for(anchor,
                   version), parse(read_offset=) -> the continuation excuse (v2.9: + the prefix
                   check), joint_note(); Amendment 2: parse(excuse_verdicts=) -> the verifier
@@ -66,8 +66,8 @@ src/hallucination_bench/
   evals/__init__.py  EVALS registry + bank_for(name); Models.eval picks the bank and <out>/<eval>/
   evals/_bank_common.py  sites / positions / marked response / expected grid (every bank)
   evals/story/bank.py    the story bank (data/story); the pipeline is wsbench_chat's (plan 0007)
-  evals/wsbench_chat/{bank,run,score}.py   bank + grid; pipeline (shared); metrics + bootstrap
-  evals/wsbench_chat/score_v2.py   claim-map metrics (char-weighted shares, rates, comparisons)
+  evals/wsbench_chat/{bank,run,span_score}.py   bank + grid; pipeline (shared); span metrics + bootstrap
+  evals/wsbench_chat/claim_map_score.py   claim-map metrics (char-weighted shares, rates, comparisons)
   evals/wsbench_chat/expand.py     plan 0028: literal ports of the WSB seed screen, read sites,
                                    thinning + expansion_draw (new lmsys English-only, amendment 1)
   evals/agentic_misalignment/      plan 0008 (own driver; NOT the chat pipeline):
@@ -85,12 +85,15 @@ src/hallucination_bench/
     evals/agentic_misalignment/situation.py  plan 0029: amsit-v2 (situation misrepresentation; v1 kept in VERSIONS; sites,
                   prompt, fail-closed parse, item_rows / metric for the am_situation family)
   final.py        plan 0029: `hbench final` (v8 manifest checks -> hindex-v8 -> plots/final/)
-  calibrate.py    classifier vs gold cases, Wilson CIs, the held-out gate
-  calibrate_v2.py claim map vs unit-level gold (dev_v2 / heldout_v2), the v2 gate
-  report.py       cross-arm report, audit samples, pilot-dump
-  report_v2.py    `report --view v2`, probe_candidates.jsonl, audit_samples_v2.md, pilot-dump-v2
-  consistency_v2.py  `consistency-v2`: two fresh :M calls per sampled cell, κ / confusion / flags
-  cli.py          hbench run|calibrate|report|consistency-v2|pilot-dump|pilot-dump-v2|units-v2|
+  calibrate_span_classifier.py  span classifier vs gold cases, the held-out gate
+  stats.py        Wilson CIs
+  run_outputs.py  a judged run's model root, arm dirs, cells.jsonl / arm.json readers, cell context
+  calibrate_claim_map.py  claim map vs unit-level gold (dev_v2 / heldout_v2 files), its gate
+  span_report.py  cross-arm span report, audit samples, pilot-dump
+  claim_map_report.py  `report --view claim_map`, probe_candidates.jsonl, audit_samples_v2.md,
+                  pilot-dump-units
+  claim_map_consistency.py  `consistency`: two fresh :M calls per sampled cell, κ / confusion / flags
+  cli.py          hbench run|calibrate|report|consistency|pilot-dump|pilot-dump-units|gold-units|
                   index|final: shared commands + helpers; eval subcommands come from EVAL_CLIS
   evals/<eval>/cli.py  an eval's own CLI: agentic_misalignment (run / report behind
                   `--eval agentic_misalignment`). A new eval adds its CLI here and lists a
@@ -183,11 +186,11 @@ scripts/overrefusal/ sample_modal.py (vLLM ground truth), reads.sh (capture + re
 - The v5c span/verify literals are frozen: `judges/v5c.py` asserts the span literals equal
   `data/wsbench_chat/judge_prompt_v5c_chat.json` at import; tests check the verify literals
   against the wsbench-pub source (`$HBENCH_WSBENCH_PUB`, skipped if absent) and the
-  data README. Never edit them; a classifier change bumps `taxonomy_v1.PROMPT_VERSION`
+  data README. Never edit them; a classifier change bumps `span_classifier.PROMPT_VERSION`
   (`taxonomy-v1.1`, ...), which re-queues only `:C` cache entries.
-- Label definitions live only in `taxonomy.py` / `taxonomy_v2.py`. Tests assert the prompt
-  contains all of them. A claim-map prompt change bumps `claimmap_v2.PROMPT_VERSION`
-  (re-queues only `:M`); switching an open decision is one line in `taxonomy_v2.CHOSEN` (bump
+- Label definitions live only in `span_taxonomy.py` / `claim_map_taxonomy.py`. Tests assert the prompt
+  contains all of them. A claim-map prompt change bumps `claim_map.PROMPT_VERSION`
+  (re-queues only `:M`); switching an open decision is one line in `claim_map_taxonomy.CHOSEN` (bump
   `TAXONOMY_VERSION` too).
 - The v2 gold uses the production unit split: changing `units.py` invalidates gold (the loader
   re-splits and rejects mismatches). Re-run `scripts/build_dev_v2.py`, never hand-edit ids/texts.
@@ -220,10 +223,10 @@ uv run hbench calibrate --split dev
 uv run hbench run ... --skip-classify  &&  uv run hbench pilot-dump --arms a,b --dest x.jsonl
 uv run hbench run ... --stages map     # claim map, single-call (summary first; span on 10% subsample)
 uv run hbench run ... --stages map --anchor v5c   # plan rev 12: v5c spans as ESTABLISHED units
-uv run hbench report --out outputs --view v2
-uv run hbench calibrate --taxonomy v2 --split dev
-uv run hbench consistency-v2 --arms s3d-rl600:44,nla-rl-L42:42,jlens:44 --n 50 --seed 0
-uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + production units, unlabelled
+uv run hbench report --out outputs --view claim_map
+uv run hbench calibrate --taxonomy claim_map --split dev
+uv run hbench consistency --arms s3d-rl600:44,nla-rl-L42:42,jlens:44 --n 50 --seed 0
+uv run hbench pilot-dump-units --arms a,b --dest x.jsonl   # real cells + production units, unlabelled
 ```
 
 ## Gotchas
@@ -234,9 +237,9 @@ uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + productio
   `wsbench-acts:/acts-hallucination-story[-L42]`.
   - Story is **always pre-gate**, because the held-out gate is chat gold. Its report has no
     judge-noise numbers.
-  - Never run `consistency-v2` for story: it is chat-only, and its output file is the chat noise
+  - Never run `consistency` for story: it is chat-only, and its output file is the chat noise
     source.
-  - `pilot-dump*`, `calibrate` and `units-v2` are chat-only.
+  - `pilot-dump*`, `calibrate` and `gold-units` are chat-only.
 
 - **`--eval agentic_misalignment`** (plan 0008) is its own driver (`evals/agentic_misalignment/run.py`),
   dispatched first in `cmd_run` / `_cmd_report`; chat and story never touch it.
@@ -319,23 +322,23 @@ uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + productio
   samples) says pre-gate until `outputs/calibration/<model>/heldout_<PROMPT_VERSION>.json` has
   `gate_passed: true`.
 - Old gold leaf names (every leaf of revs 12–15) are merged on load into the rev-16 leaves
-  (`taxonomy_v2.LEAF_RENAMES`), with the carried tags under `tags` / `rest_tags`
+  (`claim_map_taxonomy.LEAF_RENAMES`), with the carried tags under `tags` / `rest_tags`
   (`MERGE_TAGS`).
 - Consistency cache: `outputs/consistency/<model>/cache.jsonl`, keys `cons:{arm}:{cell}:r{n}`
   (the repeat index is in the fingerprint). Token arms need their `summ:` rows cached.
 - **Quoted evidence** (rev 17): incorrect segments need `contradicted_by`, `correct` ones
   (except `source = entailed`) `supported_by`, located in prompt + response (marker removed,
-  `claimmap_v2.conversation_text`). `parse(raw, units, conversation)` fails closed to
+  `claim_map.conversation_text`). `parse(raw, units, conversation)` fails closed to
   `unverifiable` (`judge_leaf` keeps the judge's leaf; counters `n_unquoted_contradictions`,
   `n_unquoted_support`). Without `conversation` the check is skipped (unit tests only); every
   production caller (run, calibrate, consistency) passes it.
-- **Judge noise** (rev 17): `report --view v2` reads
+- **Judge noise** (rev 17): `report --view claim_map` reads
   `outputs/consistency/<model>/consistency_<PROMPT_VERSION>.json` for the "judge noise ±" column
-  and the noise section; run `consistency-v2` on the run's arms first, else they show —.
+  and the noise section; run `consistency` on the run's arms first, else they show —.
 - **Rev 18 junk merge is post-parse**: the judge enum/prompt (`JUDGE_LEAF_NAMES`, claimmap-v2.7)
-  is unchanged; `claimmap_v2.parse` maps `non_claim` / `off_topic` to `junk` (reason kept /
+  is unchanged; `claim_map.parse` maps `non_claim` / `off_topic` to `junk` (reason kept /
   `off_topic`). Never render `LEAF_NAMES` into the prompt or schema (that would re-queue every
-  `:M` answer). `consistency-v2 --rescore` re-parses the cached r0/r1 answers with the current parser
+  `:M` answer). `consistency --rescore` re-parses the cached r0/r1 answers with the current parser
   (prompt rebuilt from stored unit texts + bank) with no API calls.
 - **Rev 19, also post-parse**: `hedged` segments become `unverifiable` (+ `same_slot_alternative`,
   `raw_leaf` kept, `n_hedged_remapped`; health splits by origin `n_hedged_from_*`);
@@ -385,7 +388,7 @@ uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + productio
     `index.SAFETY_READERS_V8` (no `final-olens-rl600-x4`).
   benign_roleplay: `wsb.CAMPAIGN_NESTED` arms reuse `<campaign>/<arm>/{all,L<k>}`.
 - **hindex-v8 / claimmap-v2.8** (plan 0029):
-  - **Prompt versions are a registry**: `claimmap_v2.VERSIONS` / `claimmap_am.VERSIONS`. The module
+  - **Prompt versions are a registry**: `claim_map.VERSIONS` / `claimmap_am.VERSIONS`. The module
     constants (`PROMPT_VERSION`, `SYSTEM`, `USER_TEMPLATE`, `SCHEMA`, `LEAF_NAMES`, ...) and every
     v2.7 object keep their v2.7 values, pinned by hash in `tests/test_registry_pins.py` (recorded
     from main before the change). v2.8 text lives in parallel `*_V28` objects, v2.9 text in
@@ -404,7 +407,7 @@ uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + productio
   - **Dates are always `detail` in claimmap-v2.8 when the conversation contradicts them**
     (Camila 2026-11-04, real-world events too: "14 April 1911" for the Titanic); a wrong
     real-world date the conversation never settles stays `supplementary_false` (rule 6). The
-    shared calibration gold keeps v2.7's `false_claim`; `calibrate_v2.GOLD_OVERRIDES_V28`
+    shared calibration gold keeps v2.7's `false_claim`; `calibrate_claim_map.GOLD_OVERRIDES_V28`
     relabels those units for v2.8 runs only (dev_v2 + `heldout_v2_synthetic.jsonl` held2-01 via
     `--cases`; a unit-level override can pin the expected unit text, `GOLD_OVERRIDE_TEXTS_V28`).
   - **v2.8 continuation rule** (Camila 2026-11-04, superseding pilot fix A: "a readout that
@@ -458,10 +461,10 @@ uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + productio
     (`n_continuation_miss`, ...) are emitted for v2.8+ roots only, so v7 rebuilds are
     byte-identical (`tests/test_v7_rebuild_identity.py`; fixture written once by
     `tests/v7_rebuild_fixture.py` with the pre-change code: provenance, never a refresh).
-  - The excuse runs last in `claimmap_v2.parse` (after rev 17 quotes, rev 18 junk, rev 19
+  - The excuse runs last in `claim_map.parse` (after rev 17 quotes, rev 18 junk, rev 19
     hedges), only with `read_offset` (main / story: `read_offset_chat`; AM: `site["char"]`),
     never in `--anchor v5c` mode. `continuation_miss` is outside the v2.7 tables
-    (`taxonomy_v2.SCORING_EXTRA`: thinky / unresolved, a claim, weight 0).
+    (`claim_map_taxonomy.SCORING_EXTRA`: thinky / unresolved, a claim, weight 0).
   - Joint cells: `hbench run --joint [--joint-from a,b]` (chat / story; each layer from the first
     source that has it) -> `<arm>/cells_joint.jsonl` + `summary_joint_v2.json` + `joint.json`
     (keys `{id}__Lall__p{pos}`, records `layer: "all"`, readouts `R{i}` = layer `20 + 4i`, sample
@@ -487,7 +490,7 @@ uv run hbench pilot-dump-v2 --arms a,b --dest x.jsonl   # real cells + productio
     file, requires the full unit grid (L20..L60 + `all` for joint families), checks each
     claim-map arm dir's `arm.json` `map_prompt` (only claimmap-v2.9 accepted), and builds from a fresh temp dir holding only
     the listed files (`situation.jsonl` filtered to the listed units).
-  - Judge noise is not run for v8: `report --view v2` shows no noise column for v2.8 roots.
+  - Judge noise is not run for v8: `report --view claim_map` shows no noise column for v2.8 roots.
   - **Persistent judge failures** (plan 0029 Amendment 4). Rule:
     - A failed cell is explained by its record's **blocking stage**:
       - main / story: summary → map → cverify;

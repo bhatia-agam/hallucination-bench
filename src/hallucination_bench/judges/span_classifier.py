@@ -1,7 +1,7 @@
-"""The taxonomy classifier (``taxonomy-v1``): labels already-found hallucinated spans.
+"""The span classifier (prompt ``taxonomy-v1``): labels already-found hallucinated spans.
 
 It never decides whether a span is a hallucination and never adds, removes or re-judges spans.
-The system prompt is rendered from :mod:`hallucination_bench.taxonomy`. It sees the prompt, the
+The system prompt is rendered from :mod:`hallucination_bench.span_taxonomy`. It sees the prompt, the
 marked response, the specific-class readouts and a numbered span list ``S1..Sn`` (readout index +
 grounding label); it never sees the earlier stages' ``why`` text.
 
@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from hallucination_bench import taxonomy as tx
+from hallucination_bench import span_taxonomy as tx
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.llm import schema_block
 

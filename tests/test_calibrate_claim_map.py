@@ -1,4 +1,4 @@
-"""calibrate_v2 (plan 0002): v2 case validation against the production splitter, unit-level and
+"""calibrate_claim_map (plan 0002): case validation against the production splitter, unit-level and
 segment-level scoring, the gate, the dev coverage, and fresh-call repeats."""
 
 import asyncio
@@ -6,12 +6,12 @@ import copy
 import json
 
 import pytest
-from test_claimmap_v2 import MapFake, e, sp, unit_lines
+from test_claim_map import MapFake, e, sp, unit_lines
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.cache import Cache
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 
 M = "⟦READ⟧"
 

@@ -104,16 +104,6 @@ JUDGE_GROUPS: tuple[str, ...] = (
     NON_CLAIM,
 )
 GROUPS: tuple[str, ...] = tuple(g for g in JUDGE_GROUPS if g != NON_CLAIM)
-GROUP_TITLES: dict[str, str] = {
-    HALLUCINATION: "hallucinations: wrong details and false claims (obviously contradicted)",
-    CO_ACTIVATION: "plausible co-activation: substitutions of a related object",
-    CORRECT: "correct content about the text (fidelity only)",
-    SUPPLEMENTARY: "supplementary world claims the conversation does not settle",
-    THINKY: "the model's own state, and unverifiable on-topic content",
-    UNSETTLED: "unsettled: ambiguous topic",
-    JUNK: "junk: non-claims and off-topic claims (rev 18)",
-    NON_CLAIM: "non-claims",
-}
 
 # code-assigned pseudo-leaves (never in the judge's enum)
 UNKNOWN_INCORRECT = "unknown_incorrect"

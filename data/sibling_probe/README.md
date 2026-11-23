@@ -148,3 +148,31 @@ candidates); window identity; no duplicates.
 - `umcommit_<domain>_{dev,gold}.jsonl` + `*_todo.jsonl`: commitment-judge calibration labels.
 - `um_<domain>_concepts.json`, `um_<domain>_probe_texts.jsonl`, `um_<domain>_distractors.json`:
   as for country (the distractors' sha256 is checked against the probe score run).
+
+## Running the ladder for other methods
+
+The driver's four methods and their readout files are built in. To run other methods, give
+`scripts/sibling_probe/um_ladder.py` a methods file (`--methods-config FILE` or
+`$HBENCH_SIBLING_METHODS`); without one nothing changes.
+
+```json
+{"methods": [
+  {"name": "s3d", "readouts": "/readouts/s3d-rl600/sibling.jsonl"},
+  {"name": "logit_lens", "kind": "tokens", "readouts": "/readouts/logit_lens/sibling.jsonl"},
+  {"name": "nla", "kind": "prose", "readouts": "/readouts/nla/sibling_{category}.jsonl"}
+]}
+```
+
+- The listed methods are the methods of the run, in order. Cross-method support is counted
+  among them only.
+- `kind`: `tokens` (rows carry `tokens` + `scores`; `summarize` writes their summaries and
+  only a summary can commit), `packed` (`samples` packed as `"- a\n- b"` strings, like `s3d`)
+  or `prose` (one sample per list entry; the default).
+- `readouts`: an absolute path, or one relative to `<src-root>/outputs/sibling/readouts`;
+  `{category}` is replaced by the domain. One file may hold every domain: rows are kept by
+  item id. Rows are `{id, layer, pos, samples | tokens + scores}`.
+- A built-in method may be listed by name (its own file) or with another `readouts` file; its
+  kind is fixed. `fixed_layer` marks a single-layer method (as `nla-rl-L42` is at 42).
+- `--out DIR` replaces `outputs/sibling/um`; `--probes-root DIR` reads `probes/` and
+  `probes_adj/` (and `<domain>/probes*/`) of another run's `.../sibling/um` dir. The probes
+  are fitted on the subject model, not on a method, so a new method reuses them.

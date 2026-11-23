@@ -12,12 +12,18 @@ Inputs come from ``--src-root`` (default ``$HBENCH_SIBLING_SRC_ROOT``, else
 /workspace/hb-sibling-probes; read only): readouts, the plan 0004 J-lens summary cache.
 Keyless Anthropic auth (repo convention).
 
+Other methods: ``--methods-config FILE`` (or ``$HBENCH_SIBLING_METHODS``) names the methods of
+the run and their readout files (:func:`load_methods_config`); ``--out`` moves the outputs and
+``--probes-root`` reads the probe fits / scores of an earlier run. With none of them given the
+four built-in methods, their paths and every output are as before.
+
     uv run --no-sync python scripts/sibling_probe/um_ladder.py mentions
 """
 
 import argparse
 import asyncio
 import json
+import os
 import random
 import re
 import sys
@@ -38,12 +44,14 @@ SRC_DEFAULT = paths.SIBLING_SRC_ROOT
 MODEL = "claude-opus-5-5"
 FALLBACK_MODEL = "claude-sonnet-5-5"
 EFFORT = "low"
+METHODS_ENV = "HBENCH_SIBLING_METHODS"
 READOUTS = {
     "s3d": "s3d-rl600-all11/sibling_eval.jsonl",
     "mlnla-rl600": "mlnla-rl600-all11/sibling_country.jsonl",
     "jlens": "jlens-all11/sibling_country.jsonl",
     U.NLA42: "nla-rl-L42/sibling_country.jsonl",
 }
+METHOD_FILES: dict[str, str] = {}  # --methods-config: method -> its readout file
 
 
 def read_jsonl(p: Path) -> list[dict[str, Any]]:
@@ -59,13 +67,59 @@ def write_jsonl(p: Path, rows: list[dict[str, Any]]) -> None:
     tmp.replace(p)
 
 
+def load_methods_config(path: Path) -> dict[str, str]:
+    """``{"methods": [{"name", "kind", "readouts", "label", "fixed_layer"}, ...]}`` -> the run's
+    methods (in file order) and the readout file of each one that names it.
+
+    ``kind`` is ``tokens`` (rows carry ``tokens`` + ``scores``; judged through a summary),
+    ``packed`` (``samples`` packed as ``"- a\\n- b"`` strings) or ``prose`` (one sample per
+    list entry, the default). ``readouts`` may hold ``{category}`` (the domain) and is an
+    absolute path or relative to ``<src-root>/outputs/sibling/readouts``. A built-in method
+    may be listed by name alone (its own path), or with ``readouts`` to read another file; its
+    kind is fixed."""
+    doc = json.loads(Path(path).read_text())
+    rows = doc["methods"] if isinstance(doc, dict) else doc
+    files: dict[str, str] = {}
+    for r in rows:
+        unknown = set(r) - {"name", "kind", "readouts", "label", "fixed_layer"}
+        if unknown:
+            sys.exit(f"{path}: method {r.get('name')!r} has unknown keys {sorted(unknown)}")
+        name = r["name"]
+        builtin = name in U.METHOD_KIND
+        try:
+            U.add_method(
+                name,
+                r.get("kind", U.METHOD_KIND[name] if builtin else U.KIND_PROSE),
+                label=r.get("label"),
+                fixed_layer=r.get("fixed_layer", U.FIXED_LAYER.get(name)),
+            )
+        except ValueError as e:
+            sys.exit(f"{path}: {e}")
+        if r.get("readouts"):
+            files[name] = r["readouts"]
+        elif not builtin:
+            sys.exit(f"{path}: method {name!r} needs a `readouts` file")
+    try:
+        U.select_methods([r["name"] for r in rows])
+    except ValueError as e:
+        sys.exit(f"{path}: {e}")
+    return files
+
+
+def readout_path(src: Path, method: str) -> Path:
+    """The method's readout file: a configured one (``{category}`` filled in; an absolute path
+    stands alone) wins over the built-in one."""
+    rel = METHOD_FILES[method].replace("{category}", U.CATEGORY) if method in METHOD_FILES else None
+    return src / "outputs" / "sibling" / "readouts" / (rel or READOUTS[method])
+
+
 def country_items(src: Path) -> dict[str, dict[str, Any]]:
     bank = json.loads((src / "data" / "sibling_probe" / "items.json").read_text())
     return {it["id"]: it for it in bank["items"] if it["category"] == U.CATEGORY}
 
 
 def readout_rows(src: Path, method: str, items: dict[str, Any]) -> list[dict[str, Any]]:
-    p = src / "outputs" / "sibling" / "readouts" / READOUTS[method]
+    p = readout_path(src, method)
     rows = [r for r in read_jsonl(p) if r["id"] in items]
     keys = Counter((r["id"], r["layer"], r["pos"]) for r in rows)
     dup = [k for k, n in keys.items() if n > 1]
@@ -140,20 +194,27 @@ async def _summarize(rows: list[dict[str, Any]], summ: Summaries, rpm: float, co
     return spend
 
 
+def token_methods() -> list[str]:
+    """The run's token methods (built in: J-lens). Their summaries share one cache: a row is
+    keyed by its cell and fingerprinted by its token bag, so methods never read each other's."""
+    return [m for m in U.methods() if U.method_kind(m) == U.KIND_TOKENS]
+
+
 def cmd_summarize(a: argparse.Namespace) -> None:
     items = country_items(a.src_root)
     fm = U.FastMatcher(U.load_lexicon())
     ctx = {i: U.item_context(fm, it) for i, it in items.items()}
     summ = Summaries(a.src_root, readonly=False)
     todo, have = [], 0
-    for row in readout_rows(a.src_root, "jlens", items):
-        if not U.jlens_needs_summary(fm, row, ctx[row["id"]]):
-            continue
-        _text, status = summ.get(row)
-        if status == "ok":
-            have += 1
-        else:
-            todo.append(row)
+    for method in token_methods():
+        for row in readout_rows(a.src_root, method, items):
+            if not U.jlens_needs_summary(fm, row, ctx[row["id"]]):
+                continue
+            _text, status = summ.get(row)
+            if status == "ok":
+                have += 1
+            else:
+                todo.append(row)
     print(f"cells needing a summary: {have + len(todo)} (cached {have}, to call {len(todo)})")
     if a.dry_run or not todo:
         return
@@ -173,11 +234,11 @@ def cmd_mentions(a: argparse.Namespace) -> None:
     strata: list[dict[str, Any]] = []
     cells = Counter()
     summ_status = Counter()
-    for method in U.METHODS:
+    for method in U.methods():
         for row in readout_rows(a.src_root, method, items):
             cells[method] += 1
             text = status = None
-            if method == "jlens" and U.jlens_needs_summary(fm, row, ctx[row["id"]]):
+            if method in token_methods() and U.jlens_needs_summary(fm, row, ctx[row["id"]]):
                 text, status = summ.get(row)
                 summ_status[status] += 1
             us, ss = U.build_mentions(fm, method, row, ctx[row["id"]], text, status)
@@ -196,7 +257,7 @@ def cmd_mentions(a: argparse.Namespace) -> None:
         "units": dict(by_m),
         "samples_to_judge": dict(Counter(u["method"] for u in units for _ in u["samples"])),
         "distinct_concepts": {
-            m: len({u["concept"] for u in units if u["method"] == m}) for m in U.METHODS
+            m: len({u["concept"] for u in units if u["method"] == m}) for m in U.methods()
         },
         "strata": {
             f"{m}:{k}": n
@@ -373,7 +434,7 @@ def cmd_judge(a: argparse.Namespace) -> None:
     write_jsonl(OUT / name, out)
     c = Counter((r["method"], r["committed"]) for r in out)
     print(f"wrote {name}: {len(out)} units, fail-closed samples {failed}")
-    for m in U.METHODS:
+    for m in U.methods():
         n1, n0 = c[(m, True)], c[(m, False)]
         if n1 + n0:
             print(f"  {m}: committed {n1}/{n1 + n0} = {n1 / (n1 + n0):.2f}")
@@ -409,7 +470,7 @@ def cmd_todo(a: argparse.Namespace) -> None:
     for u in units:
         by_m[u["method"]].append(u)
     dev, gold = [], []
-    for m in U.METHODS:
+    for m in U.methods():
         pool = sorted(by_m[m], key=lambda u: u["uid"])
         rng.shuffle(pool)
         dev += pool[:10]
@@ -1218,7 +1279,7 @@ def summarize_labels(
         "nulls": {},
         "probe_quality": {},
     }
-    for m in U.METHODS:
+    for m in U.methods():
         rs = [r for r in rows if r["method"] == m]
         com = [r for r in rs if r["committed"]]
         out["labels"][m] = {
@@ -1480,14 +1541,27 @@ def summarize_labels(
 CAL_PREFIX = "umcommit"
 
 
-def setup_domain(cat: str) -> None:
-    """Plan 0011: point every path / run name at the domain (country keeps plan 0006's)."""
+def setup_domain(cat: str, out: Path | None = None, probes_root: Path | None = None) -> None:
+    """Plan 0011: point every path / run name at the domain (country keeps plan 0006's).
+
+    ``out`` replaces ``outputs/sibling/um`` (same layout below it); ``probes_root`` is the
+    ``.../sibling/um`` dir of the run whose probe fits and scores (``probes/``, ``probes_adj/``)
+    are read instead of this run's own."""
     global OUT, READOUTS, CONCEPTS_PATH, PROBE_TEXTS_PATH, PROBE_RUN, PROBE_ACTS, PROBES_DIR
     global PROBES_ADJ_DIR, DISTRACTORS_PATH, LABEL_DIR, CAPTURE_PREFIX, CAL_PREFIX
     U.configure(cat)
+    if out is not None:
+        OUT = Path(out)
+    probes = OUT if probes_root is None else Path(probes_root)
     if cat == "country":
+        PROBES_DIR, PROBES_ADJ_DIR, LABEL_DIR = (
+            probes / "probes",
+            probes / "probes_adj",
+            OUT / "label",
+        )
         return
     OUT = OUT / cat
+    probes = probes / cat
     READOUTS = {
         "s3d": "s3d-rl600-all11/sibling_eval.jsonl",
         "mlnla-rl600": f"mlnla-rl600-all11/sibling_{cat}.jsonl",
@@ -1498,8 +1572,8 @@ def setup_domain(cat: str) -> None:
     PROBE_TEXTS_PATH = DATA / f"um_{cat}_probe_texts.jsonl"
     PROBE_RUN = f"um-{cat.replace('_', '-')}-v1"
     PROBE_ACTS = f"acts-um-{cat.replace('_', '-')}-probe"
-    PROBES_DIR = OUT / "probes"
-    PROBES_ADJ_DIR = OUT / "probes_adj"
+    PROBES_DIR = probes / "probes"
+    PROBES_ADJ_DIR = probes / "probes_adj"
     DISTRACTORS_PATH = DATA / f"um_{cat}_distractors.json"
     LABEL_DIR = OUT / "label"
     CAPTURE_PREFIX = f"umprobe_{cat}"
@@ -1511,6 +1585,22 @@ def main() -> None:
     ap.add_argument("--src-root", type=Path, default=SRC_DEFAULT)
     ap.add_argument(
         "--category", default="country", choices=DOMAINS, help="UM domain (default country)"
+    )
+    ap.add_argument(
+        "--methods-config",
+        type=Path,
+        default=os.environ.get(METHODS_ENV) or None,
+        help=f"JSON naming the run's methods and readout files (default ${METHODS_ENV}; "
+        "unset = the four built-in methods)",
+    )
+    ap.add_argument(
+        "--out", type=Path, default=None, help="outputs dir (default outputs/sibling/um)"
+    )
+    ap.add_argument(
+        "--probes-root",
+        type=Path,
+        default=None,
+        help="the .../sibling/um dir whose probes/ and probes_adj/ are read (default: --out)",
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("summarize")
@@ -1532,7 +1622,9 @@ def main() -> None:
     sub.add_parser("distractors")
     sub.add_parser("label")
     a = ap.parse_args()
-    setup_domain(a.category)
+    if a.methods_config:
+        METHOD_FILES.update(load_methods_config(Path(a.methods_config)))
+    setup_domain(a.category, a.out, a.probes_root)
     globals()["cmd_" + a.cmd.replace("-", "_")](a)
 
 

@@ -113,21 +113,6 @@ def weighted_quantile(x: np.ndarray, w: np.ndarray, q: float = Q) -> float:
     return float(xlo + (h - lo) * (xhi - xlo))
 
 
-def threshold_ci(
-    scores: np.ndarray, text_of_row: np.ndarray, *, n_boot: int = 500, seed: int = 0
-) -> tuple[float, float]:
-    """95% text-level bootstrap CI of the 95th percentile of ``scores`` (rows grouped by text)."""
-    if not scores.size:
-        return float("nan"), float("nan")
-    texts, inv = np.unique(text_of_row, return_inverse=True)
-    rng = np.random.default_rng(seed)
-    out = np.empty(n_boot)
-    for b in range(n_boot):
-        cnt = rng.multinomial(texts.size, np.full(texts.size, 1.0 / texts.size))
-        out[b] = weighted_quantile(scores, cnt[inv])
-    return float(np.nanquantile(out, 0.025)), float(np.nanquantile(out, 0.975))
-
-
 # ------------------------------------------------------------------ folds
 
 

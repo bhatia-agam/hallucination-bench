@@ -1,11 +1,11 @@
 """Plan 0002 rev 15: hallucination = obviously contradicted by the text (still in force in rev
-16; the rev-15 leaves themselves were merged by rev 16, see test_claimmap_v2_rev16.py)."""
+16; the rev-15 leaves themselves were merged by rev 16, see test_claim_map_rev16.py)."""
 
 import pytest
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import taxonomy_v2 as tx
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_taxonomy as tx
+from hallucination_bench.judges import claim_map as cm
 
 
 @pytest.mark.parametrize("system", [cm.SYSTEM, cm.SYSTEM_V5C])

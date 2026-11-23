@@ -148,7 +148,7 @@ def bank_manifests() -> Outcome:
 
 
 def index_manifest() -> Outcome:
-    from hallucination_bench.judges import claimmap_v2 as cm
+    from hallucination_bench.judges import claim_map as cm
     from hallucination_bench.judges import continuation_verifier as cv
 
     path = DATA / "index" / "v8_manifest.json"

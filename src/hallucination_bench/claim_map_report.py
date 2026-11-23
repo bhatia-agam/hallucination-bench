@@ -1,12 +1,12 @@
-"""``hbench report --view v2``: the claim-map (taxonomy v2) report, probe candidates, audit
-samples, and the v2 pilot dump (plan 0002, §Run and §Metrics; rev 13 verdict layer).
+"""``hbench report --view claim_map``: the claim-map report, probe candidates, audit
+samples, and the cell dump for labelling (plan 0002, §Run and §Metrics; rev 13 verdict layer).
 
 Writes, under ``outputs/<eval>/<model>/`` (``wsbench_chat`` by default; ``story``, plan
 0007): ``report_v2.md``, ``report_v2.json``,
 ``probe_candidates.jsonl`` (one row per probe-candidate segment; replaces
 ``substitution_pairs.jsonl``) and ``audit_samples_v2.md`` (``verdict_n`` per verdict, then
 ``audit_n`` per leaf). Every arm's ``cells.jsonl`` / ``summary_v2.json`` is first regenerated
-from its cache (no API calls), as in the v1 report. Verdict shares and readout-level verdict
+from its cache (no API calls), as in the span report. Verdict shares and readout-level verdict
 rates are the headline; groups and leaves are the breakdown. Prose and token arms get separate
 tables. Until the held-out gate passes for the current prompt version, every output is
 labelled **pre-gate**.
@@ -19,18 +19,24 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.evals import bank_for
-from hallucination_bench.evals.wsbench_chat import NAME, bank, score_v2  # bank: chat default
-from hallucination_bench.evals.wsbench_chat.run import Models, rebuild_arm
-from hallucination_bench.evals.wsbench_chat.score_v2 import (
+from hallucination_bench.evals.wsbench_chat import NAME, bank, claim_map_score  # bank: chat default
+from hallucination_bench.evals.wsbench_chat.claim_map_score import (
     AGREEMENT,
     FLAGS,
     GROUP_ROWS,
     VERDICT_FLAGS,
     VERDICT_ROWS,
 )
-from hallucination_bench.report import _context, arm_dirs, iter_cells, load_arm_json, model_root
+from hallucination_bench.evals.wsbench_chat.run import Models, rebuild_arm
+from hallucination_bench.run_outputs import (
+    _context,
+    arm_dirs,
+    iter_cells,
+    load_arm_json,
+    model_root,
+)
 
 PRE_GATE_NOTE = (
     "**PRE-GATE**: the held-out calibration gate has not passed for this prompt version; "
@@ -174,7 +180,7 @@ def _noise_cell(noise: dict[str, Any] | None, row_name: str, kind: str) -> str:
 def load_noise(out_root: Path, judge_model: str) -> dict[str, Any] | None:
     """The consistency-v2 result of the current prompt version (``None`` if not run)."""
     from hallucination_bench.evals.wsbench_chat.run import model_slug
-    from hallucination_bench.judges.claimmap_v2 import PROMPT_VERSION
+    from hallucination_bench.judges.claim_map import PROMPT_VERSION
 
     p = (
         Path(out_root)
@@ -186,7 +192,7 @@ def load_noise(out_root: Path, judge_model: str) -> dict[str, Any] | None:
 
 
 def noise_section(noise: dict[str, Any] | None, eval_name: str = NAME) -> list[str]:
-    from hallucination_bench import consistency_v2
+    from hallucination_bench import claim_map_consistency
 
     md = ["## Judge noise (consistency-v2: two fresh calls per sampled cell)", ""]
     if eval_name != NAME:
@@ -204,7 +210,7 @@ def noise_section(noise: dict[str, Any] | None, eval_name: str = NAME) -> list[s
             "",
         ]
     body = (
-        consistency_v2.render_markdown(noise)
+        claim_map_consistency.render_markdown(noise)
         .replace("\n## ", "\n### ")
         .replace("\n### ", "\n#### ")
     )
@@ -333,7 +339,7 @@ def build(
         md += _table(
             "Junk share by reason (rev 18: junk = non-claims + off-topic claims; % of readout "
             "characters, sums to the junk share)",
-            ["arm", "n readouts", *score_v2.JUNK_REASON_ROWS],
+            ["arm", "n readouts", *claim_map_score.JUNK_REASON_ROWS],
             [_grow(n, b, "char_share_junk_reason") for n, b in overall],
         )
         md += _table(
@@ -546,7 +552,7 @@ def _segments(rec: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def probe_candidates(dirs: list[Path], *, pre_gate: bool = True) -> list[dict[str, Any]]:
-    """One row per probe-candidate segment (``taxonomy_v2.PROBE_CANDIDATE_LEAVES``, scored
+    """One row per probe-candidate segment (``claim_map_taxonomy.PROBE_CANDIDATE_LEAVES``, scored
     leaf): ``{arm, layer, item, pos, leaf, probe_target, actual|null, segment, readout}`` plus
     provenance. ``actual`` is the substitution pair's actual object."""
     out = []
@@ -763,7 +769,7 @@ def report(
 # ---------------------------------------------------------------- pilot dump (v2)
 
 
-def pilot_dump_v2(
+def pilot_dump_units(
     out_root: Path,
     judge_model: str,
     arms: list[str],
@@ -777,7 +783,7 @@ def pilot_dump_v2(
     if any readout is, else ``off_topic``, ``consistent``, ``generic``). Needs the span stage in
     the cache (``cells.jsonl`` from a run or ``--rebuild``); never shows claim-map output, so
     the labeller stays blind to the classifier."""
-    from hallucination_bench.calibrate_v2 import skeleton
+    from hallucination_bench.calibrate_claim_map import skeleton
 
     rng = random.Random(seed)
     root = model_root(out_root, judge_model)

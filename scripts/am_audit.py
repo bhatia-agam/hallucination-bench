@@ -35,13 +35,13 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from hallucination_bench.cache import Cache, fingerprint  # noqa: E402
-from hallucination_bench.calibrate import wilson  # noqa: E402
 from hallucination_bench.evals.agentic_misalignment import bank, detect, score  # noqa: E402
 from hallucination_bench.evals.agentic_misalignment import kinds as K  # noqa: E402
 from hallucination_bench.evals.agentic_misalignment import run as amrun  # noqa: E402
 from hallucination_bench.evals.wsbench_chat.run import Models  # noqa: E402
 from hallucination_bench.judges.v5c import READ_MARK  # noqa: E402
 from hallucination_bench.llm import LLM, Usage  # noqa: E402
+from hallucination_bench.stats import wilson  # noqa: E402
 
 SPECIFIC = (
     "blackmail",

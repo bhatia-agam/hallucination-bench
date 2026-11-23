@@ -1,11 +1,11 @@
 """The claim map on agentic_misalignment cells (plan 0008, Stage M): ``claimmap-v2.7+am2``.
 
-The system prompt is ``claimmap_v2.SYSTEM`` byte for byte (single-call mode, no taxonomy
+The system prompt is ``claim_map.SYSTEM`` byte for byte (single-call mode, no taxonomy
 change). Only the head of the user prompt changes, because the marker ``⟦READ⟧`` sits inside the
 **prompt** here (every read site is a prompt position), not in the response. The tail, from
 "Each line is `unit id | unit text`" onwards (the units block and the per-unit instructions), is
 the chat ``USER_TEMPLATE`` tail verbatim, sliced from it so the two cannot drift. Answers are
-validated and parsed with ``claimmap_v2.validate`` / ``claimmap_v2.parse``.
+validated and parsed with ``claim_map.validate`` / ``claim_map.parse``.
 
 Plan 0029: ``VERSIONS`` registers ``claimmap-v2.7+am2`` (the above, byte for byte) and
 ``claimmap-v2.8+am3`` (and ``claimmap-v2.9+am3``, the plan 0029 amendment: the same head on
@@ -21,7 +21,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.units import Unit
 

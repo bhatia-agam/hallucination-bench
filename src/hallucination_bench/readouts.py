@@ -160,12 +160,6 @@ def load_readouts(
     return cells, rep
 
 
-def expected_cells(
-    positions: Mapping[str, Collection[int]], layers: Collection[int]
-) -> set[tuple[str, int, int]]:
-    return {(id_, layer, pos) for id_, ps in positions.items() for layer in layers for pos in ps}
-
-
 def missing_cells(
     cells: Iterable[Cell], expected: set[tuple[str, int, int]]
 ) -> list[tuple[str, int, int]]:

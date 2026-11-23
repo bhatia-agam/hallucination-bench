@@ -1,4 +1,4 @@
-"""Calibrate the claim-map judge (taxonomy v2) on unit-level gold and apply the held-out gate.
+"""Calibrate the claim-map judge on unit-level gold and apply the held-out gate.
 
 Plan 0002, §Calibration. Cases (``data/calibration/{dev,heldout}_v2.jsonl``, schema in
 ``data/calibration/README.md``) carry what the judge sees in production (prompt, marked
@@ -21,9 +21,9 @@ Scoring (one repeat at a time, then the mean over repeats with a Wilson 95% CI):
 flags are ignored: those units are shown and judged as ordinary text. ``--anchor v5c``
 restores rev 12 (flags shown, forced / disputed rules). There, a predicted
 ``unknown_incorrect`` is scored by the judge's ``alt_leaf`` if disputed, or its raw leaf if
-forced (:func:`claimmap_v2.resolved_leaf`); forcing and dispute counts are reported.
+forced (:func:`claim_map.resolved_leaf`); forcing and dispute counts are reported.
 
-Gold written before rev 13 is re-mapped mechanically on load (``taxonomy_v2.LEAF_RENAMES``:
+Gold written before rev 13 is re-mapped mechanically on load (``claim_map_taxonomy.LEAF_RENAMES``:
 ``world_true`` -> ``supplementary_true``, ``possible_belief`` -> ``supplementary_false``).
 Optional gold ``probe_target`` strings on probe-candidate units are reported next to the
 judge's (informational, not gated).
@@ -41,13 +41,13 @@ from pathlib import Path
 from typing import Any
 
 from hallucination_bench import DATA
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.cache import Cache, fingerprint
-from hallucination_bench.calibrate import wilson
-from hallucination_bench.evals.wsbench_chat.score_v2 import majority_leaf
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.evals.wsbench_chat.claim_map_score import majority_leaf
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.llm import LLM, Usage
+from hallucination_bench.stats import wilson
 from hallucination_bench.units import Unit, split_cell
 
 CAL_DIR = DATA / "calibration"
@@ -102,8 +102,9 @@ def _merge_tags(d: dict[str, Any], old: Any, key: str) -> None:
 
 def remap_case(c: dict[str, Any], fallbacks: Counter | None = None) -> dict[str, Any]:
     """The case with old gold leaf names mapped (a new dict; the input is not changed): every
-    earlier leaf goes mechanically through the rev-16 merges (``taxonomy_v2.LEAF_RENAMES``), and
-    the tags the merge carries (``MERGE_TAGS``: ``reason`` / ``source`` / the unverifiable flags)
+    earlier leaf goes mechanically through the rev-16 merges
+    (``claim_map_taxonomy.LEAF_RENAMES``), and the tags the merge carries (``MERGE_TAGS``:
+    ``reason`` / ``source`` / the unverifiable flags)
     are recorded under ``tags`` (unit leaf and splits) and ``rest_tags`` (rest leaf).
     ``FALLBACK_RENAMES`` (none since rev 15) are counted in ``fallbacks`` and
     :func:`load_cases` warns. Judgement calls (contradicted old ``unrealised_*``) are not made

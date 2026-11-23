@@ -12,18 +12,18 @@ import json
 
 import pytest
 from conftest import FakeLLM
-from test_claimmap_v2 import default_map, e, prompt_quote, sp
+from test_claim_map import default_map, e, prompt_quote, sp
 from test_continuation import CONV, OFF, _units, ct
 from test_joint import _readouts
 
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench import cli
-from hallucination_bench import taxonomy_v2 as tx
 from hallucination_bench.evals.agentic_misalignment import bank as am_bank
 from hallucination_bench.evals.agentic_misalignment import run as amrun
+from hallucination_bench.evals.wsbench_chat import claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat import score_v2
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import claimmap_am as cam
-from hallucination_bench.judges import claimmap_v2 as cm
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.llm import CallResult, JudgeConfigError, Usage
 
@@ -318,15 +318,15 @@ def test_v29_anchored_mode_has_the_fields_but_no_excuse():
 
 
 def test_health_keys_are_version_aware():
-    assert score_v2.health_keys(V28)[-len(cm.PARSE_COUNTS_V28_EXTRA) :] == (
+    assert claim_map_score.health_keys(V28)[-len(cm.PARSE_COUNTS_V28_EXTRA) :] == (
         cm.PARSE_COUNTS_V28_EXTRA
     )
-    assert score_v2.health_keys(V29)[-len(cm.PARSE_COUNTS_V29_EXTRA) :] == (
+    assert claim_map_score.health_keys(V29)[-len(cm.PARSE_COUNTS_V29_EXTRA) :] == (
         cm.PARSE_COUNTS_V29_EXTRA
     )
     assert cm.extra_parse_counts(V27) == () and cm.parse_counts(V27) == cm.PARSE_COUNTS
-    assert "n_excuse_blocked_prefix" in score_v2.health_keys(V29)
-    assert "n_excuse_blocked_prefix" not in score_v2.health_keys(V28)
+    assert "n_excuse_blocked_prefix" in claim_map_score.health_keys(V29)
+    assert "n_excuse_blocked_prefix" not in claim_map_score.health_keys(V28)
     m9 = wrun.Models(eval="agentic_misalignment", map_prompt=V29)
     assert amrun.health_keys(m9)[-1] == f"map_{cm.PARSE_COUNTS_V29_EXTRA[-1]}"
     assert "map_n_excuse_blocked_prefix" in amrun.health_keys(m9)

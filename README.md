@@ -164,7 +164,7 @@ seeded 10% item subsample for the v5c comparison; under `--anchor v5c` span on e
 
 ## The claim map (taxonomy v2)
 
-Defined once in [`src/hallucination_bench/taxonomy_v2.py`](src/hallucination_bench/taxonomy_v2.py)
+Defined once in [`src/hallucination_bench/claim_map_taxonomy.py`](src/hallucination_bench/claim_map_taxonomy.py)
 (leaves, groups, precedence, the Detail rule, tags, and the open decisions with their defaults in
 `CHOSEN`) and rendered into the judge prompt. Rev 16 (the lean tree): **12 leaves** —
 `non_claim` (tag `reason`), `correct` (tag `source`: prefix / after / entailed), `detail`,
@@ -176,7 +176,7 @@ verdict. The hallucination gate: a segment is incorrect only if the conversation
 contradicts** it; predictions get no category of their own (contradicted → incorrect, else
 `unverifiable` with `prediction = true`); content realised in any wording is `correct`. The
 test for world claims is **settlement, not subject** (text silent → `supplementary_*`).
-Each leaf maps to one **verdict** (`taxonomy_v2.VERDICTS`): hallucination (detail,
+Each leaf maps to one **verdict** (`claim_map_taxonomy.VERDICTS`): hallucination (detail,
 false_claim), probe_candidate (substitutions, model_state, supplementary_false,
 ambiguous_topic), correct, unresolved (unverifiable), junk, non_claim. The headline is the
 character-weighted verdict share per readout and the readout-level verdict rates, with
@@ -184,7 +184,7 @@ character-weighted verdict share per readout and the readout-level verdict rates
 groups and leaves are the breakdown. Probe-candidate segments carry a `probe_target`
 (`probe_candidates.jsonl`). Invalid `:M` answers are retried up to 2 times in-run before
 being cached as failed. Outputs are labelled **pre-gate** until the held-out gate passes for
-the current prompt version. `hbench consistency-v2 --arms s3d-rl600:44,nla-rl-L42:42,jlens:44
+the current prompt version. `hbench consistency --arms s3d-rl600:44,nla-rl-L42:42,jlens:44
 --n 50 --seed 0` runs `:M` twice per sampled cell and reports κ, raw agreement, the between-run
 leaf confusion, per-leaf self-agreement and the leaf pairs swapped in > 10% of a leaf's units
 (`outputs/consistency/<model>/`). Rev 17: every incorrect segment must quote the
@@ -241,14 +241,14 @@ uv run hbench calibrate --split heldout   # the gate (held-out only)
 # claim map (plan 0002): the :M stage on cached span results, then the v2 report
 uv run hbench run --out outputs --readouts-root $R --arms s3d-rl600 --layers 44 --limit 10 \
     --stages map --show-prompts 3
-uv run hbench report --out outputs --view v2   # report_v2.md, probe_candidates.jsonl, audit_samples_v2.md
-uv run hbench calibrate --taxonomy v2 --split dev
+uv run hbench report --out outputs --view claim_map   # report_v2.md, probe_candidates.jsonl, audit_samples_v2.md
+uv run hbench calibrate --taxonomy claim_map --split dev
 
 
 # story eval (plan 0007): the same pipeline on data/story, outputs under outputs/story/<model>/
 scripts/fetch_story_readouts.sh jlens gen-hal-story-jlens tokens 20:61:4   # gen dir -> readouts + grid check
 uv run hbench run --eval story --readouts-root /workspace/hb-readouts-story --stages map
-uv run hbench report --eval story --view v2
+uv run hbench report --eval story --view claim_map
 
 # agentic_misalignment (plan 0008): own driver, stages detect,summ,verify,map,intent (verify = Stage H,
 # the blind headline verifier, rev 13); readouts default to
@@ -290,9 +290,14 @@ uv run --no-sync hbench overrefusal offtopic-export     # plan 0022: offtopic_in
 
 Other commands: `hbench run --rebuild` (regenerate `cells.jsonl` / `summary.json` from the cache,
 no API calls), `hbench run --skip-classify` (span + verify pilot), `hbench pilot-dump` (sample
-pilot spans as unlabelled calibration cases), `hbench pilot-dump-v2` (real cells with their
-production units, unlabelled, for v2 gold), `hbench units-v2` (fill a v2 case's `gold.units`
-with the production unit split).
+pilot spans as unlabelled calibration cases), `hbench pilot-dump-units` (real cells with their
+production units, unlabelled, for claim-map gold), `hbench gold-units` (fill a claim-map case's
+`gold.units` with the production unit split).
+
+`--view` and `--taxonomy` take `spans` (contradicted and unsupported spans, the `classify`
+stage) or `claim_map` (every segment of a readout mapped to a leaf, the `map` stage). The
+earlier spellings are still accepted: `v1` / `v2` for those two values, and `consistency-v2`,
+`pilot-dump-v2`, `units-v2` for `consistency`, `pilot-dump-units`, `gold-units`.
 
 AM outputs: `outputs/agentic_misalignment/<judge model>/<arm>/{cache.jsonl,cells.jsonl,mentions.jsonl,summary.json}`,
 `intent.jsonl`, `audit/` and `report.{md,json}` under `outputs/agentic_misalignment/<judge model>/`.

@@ -10,7 +10,7 @@ import pytest
 
 from hallucination_bench import summarizer
 from hallucination_bench.evals.wsbench_chat import bank
-from hallucination_bench.judges import taxonomy_v1 as tv1
+from hallucination_bench.judges import span_classifier as tv1
 from hallucination_bench.judges import v5c
 from hallucination_bench.llm import CallResult, Usage
 

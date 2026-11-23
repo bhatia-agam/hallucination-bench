@@ -1,5 +1,6 @@
-"""``hbench <command> key=value ...``: ``run``, ``calibrate``, ``report``, ``consistency-v2``,
-``pilot-dump``, ``pilot-dump-v2``, ``units-v2``, ``index``, ``final`` and the evals' own commands.
+"""``hbench <command> key=value ...``: ``run``, ``calibrate``, ``report``, ``consistency``,
+``pilot-dump``, ``pilot-dump-units``, ``gold-units``, ``index``, ``final`` and the evals' own
+commands.
 Every command is a ``pydra.Config`` (``command.Command``): keys and defaults in ``__init__``,
 types in ``finalize()``; ``--show`` prints the resolved config, ``--help`` lists the keys."""
 
@@ -58,6 +59,28 @@ EVAL_CLIS: list[str] = [
 ]
 
 
+# The two pipelines a report or a calibration can be about, and the spellings each option value
+# and subcommand also answers to.
+SPANS = "spans"  # contradicted / unsupported spans and their classifier (stage `classify`)
+CLAIM_MAP = "claim_map"  # every segment of a readout mapped to a leaf (stage `map`)
+PIPELINES = (SPANS, CLAIM_MAP)
+PIPELINE_ALIASES = {"v1": SPANS, "v2": CLAIM_MAP}
+COMMAND_ALIASES = {
+    "consistency-v2": "consistency",
+    "pilot-dump-v2": "pilot-dump-units",
+    "units-v2": "gold-units",
+}
+
+
+def _pipeline(s: str) -> str:
+    return PIPELINE_ALIASES.get(s, s)
+
+
+def pipeline(v: object) -> str:
+    """The kind of ``view=`` / ``taxonomy=``: one of ``PIPELINES``, earlier spellings included."""
+    return choice(*PIPELINES)(_pipeline(str(v)))
+
+
 def _layers(s: str | None) -> list[int] | None:
     return [int(x) for x in s.split(",") if x.strip()] if s else None
 
@@ -102,7 +125,7 @@ def _excuse_verifier(args: Command, map_prompt: str) -> str | None:
     for diagnostics). An explicit verifier with ``--anchor v5c`` is refused by
     ``check_verifier`` (exit 3). Rebuild / report replay the arm dir's recorded setting whatever
     this says; a judge run that differs exits 3."""
-    from hallucination_bench.judges import claimmap_v2 as cm
+    from hallucination_bench.judges import claim_map as cm
     from hallucination_bench.judges import continuation_verifier as cv
 
     flag = getattr(args, "excuse_verifier", None)
@@ -229,7 +252,7 @@ def _cmd_run_joint(args: Command, arms: list, models, out: Path) -> int:
     """Plan 0029 §3.7: ``hbench run --joint``: the joint 11-layer cells of each ``--arms``
     target (sources: ``--joint-from`` in precedence order, default the arm itself)."""
     from hallucination_bench.evals.wsbench_chat import run as wrun
-    from hallucination_bench.judges.claimmap_v2 import JOINT_LAYERS
+    from hallucination_bench.judges.claim_map import JOINT_LAYERS
 
     paths = dict(arms)
     if args.joint_from:
@@ -292,12 +315,12 @@ def _print_summary(name: str, s: dict) -> None:
 
 
 def cmd_calibrate(args: Command) -> int:
-    from hallucination_bench import calibrate
+    from hallucination_bench import calibrate_span_classifier
 
-    if args.taxonomy == "v2":
-        return _calibrate_v2(args)
+    if args.taxonomy == CLAIM_MAP:
+        return _calibrate_claim_map(args)
     model = args.classifier_model or args.judge_model
-    res = calibrate.run(
+    res = calibrate_span_classifier.run(
         args.split,
         model=model,
         effort=_effort(args.effort),
@@ -307,7 +330,7 @@ def cmd_calibrate(args: Command) -> int:
         concurrency=args.concurrency,
         cases_path=Path(args.cases) if args.cases else None,
     )
-    print(calibrate.render_markdown(res))
+    print(calibrate_span_classifier.render_markdown(res))
     sp = res["spend_this_run"]
     print(f"\nspend this run: ${sp['usd']:.4f} ({sp['calls']} calls)")
     if args.split == "heldout":
@@ -315,10 +338,10 @@ def cmd_calibrate(args: Command) -> int:
     return 0
 
 
-def _calibrate_v2(args: Command) -> int:
-    from hallucination_bench import calibrate_v2
+def _calibrate_claim_map(args: Command) -> int:
+    from hallucination_bench import calibrate_claim_map
 
-    res = calibrate_v2.run(
+    res = calibrate_claim_map.run(
         args.split,
         model=args.map_model or args.judge_model,
         effort=_effort(args.effort),
@@ -330,7 +353,7 @@ def _calibrate_v2(args: Command) -> int:
         anchor=args.anchor,
         prompt=args.prompt,
     )
-    print(calibrate_v2.render_markdown(res))
+    print(calibrate_claim_map.render_markdown(res))
     sp = res["spend_this_run"]
     print(f"\ncoverage: {json.dumps(res['coverage'])}")
     print(f"spend this run: ${sp['usd']:.4f} ({sp['calls']} calls)")
@@ -402,12 +425,12 @@ def _cmd_report(args: Command) -> int:
         from hallucination_bench.evals.agentic_misalignment import cli as amcli
 
         return amcli.report(args)
-    from hallucination_bench import report
+    from hallucination_bench import span_report
 
-    if args.view == "v2":
-        from hallucination_bench import report_v2
+    if args.view == CLAIM_MAP:
+        from hallucination_bench import claim_map_report
 
-        root = report_v2.report(
+        root = claim_map_report.report(
             Path(args.out),
             args.judge_model,
             rebuild=not args.no_rebuild,
@@ -422,7 +445,7 @@ def _cmd_report(args: Command) -> int:
         )
         return 0
 
-    root = report.report(
+    root = span_report.report(
         Path(args.out),
         args.judge_model,
         rebuild=not args.no_rebuild,
@@ -434,17 +457,17 @@ def _cmd_report(args: Command) -> int:
     return 0
 
 
-def cmd_consistency_v2(args: Command) -> int:
-    from hallucination_bench import consistency_v2
+def cmd_consistency(args: Command) -> int:
+    from hallucination_bench import claim_map_consistency
 
     if args.rescore:
-        res = consistency_v2.rescore(Path(args.out), args.map_model or args.judge_model)
-        print(consistency_v2.render_markdown(res))
+        res = claim_map_consistency.rescore(Path(args.out), args.map_model or args.judge_model)
+        print(claim_map_consistency.render_markdown(res))
         print("\nre-scored from the cached r0/r1 cells: no API calls")
         return 0
     if not args.arms:
         raise SystemExit("--arms is required unless --rescore")
-    res = consistency_v2.run(
+    res = claim_map_consistency.run(
         args.arms,
         readouts_root=Path(args.readouts_root),
         out_root=Path(args.out),
@@ -454,17 +477,17 @@ def cmd_consistency_v2(args: Command) -> int:
         rpm=args.rpm,
         concurrency=args.concurrency,
     )
-    print(consistency_v2.render_markdown(res))
+    print(claim_map_consistency.render_markdown(res))
     sp = res["spend_this_run"]
     print(f"\nspend this run: ${sp['usd']:.4f} ({sp['calls']} calls)")
     return 0
 
 
 def cmd_pilot_dump(args: Command) -> int:
-    from hallucination_bench import report
-    from hallucination_bench.calibrate import validate_case
+    from hallucination_bench import span_report
+    from hallucination_bench.calibrate_span_classifier import validate_case
 
-    cases = report.pilot_dump(
+    cases = span_report.pilot_dump(
         Path(args.out),
         args.judge_model,
         args.arms.split(","),
@@ -486,11 +509,11 @@ def cmd_pilot_dump(args: Command) -> int:
     return 0
 
 
-def cmd_pilot_dump_v2(args: Command) -> int:
-    from hallucination_bench import report_v2
-    from hallucination_bench.calibrate_v2 import validate_case
+def cmd_pilot_dump_units(args: Command) -> int:
+    from hallucination_bench import claim_map_report
+    from hallucination_bench.calibrate_claim_map import validate_case
 
-    cases = report_v2.pilot_dump_v2(
+    cases = claim_map_report.pilot_dump_units(
         Path(args.out),
         args.judge_model,
         args.arms.split(","),
@@ -507,9 +530,9 @@ def cmd_pilot_dump_v2(args: Command) -> int:
     return 0
 
 
-def cmd_units_v2(args: Command) -> int:
+def cmd_gold_units(args: Command) -> int:
     """Fill each case's ``gold.units`` with the production units (leaf null) for labelling."""
-    from hallucination_bench.calibrate_v2 import skeleton
+    from hallucination_bench.calibrate_claim_map import skeleton
 
     src = Path(args.cases)
     cases = [json.loads(x) for x in src.read_text(encoding="utf-8").splitlines() if x.strip()]
@@ -538,6 +561,14 @@ def judge_keys(c: Command) -> None:
     c.key("effort", DEFAULT_EFFORT, text, "Anthropic output_config.effort ('none' omits it)")
     c.key("rpm", 1500.0, number, "requests per minute, one pacer for the whole process")
     c.key("concurrency", 64, integer, "judge calls in flight at once")
+    c.key(
+        "judge_backend",
+        None,
+        optional(choice("live", "batches")),
+        "how Claude judge calls travel: live or batches (Message Batches: half price, outside "
+        "the live rate limits; see docs/judge_backends.md). Not given: $HBENCH_JUDGE_BACKEND, "
+        "else live",
+    )
 
 
 def eval_key(c: Command) -> None:
@@ -580,7 +611,7 @@ def _eval_names() -> list[str]:
 
 
 def _prompt_choices() -> list[str]:
-    from hallucination_bench.judges.claimmap_v2 import VERSIONS
+    from hallucination_bench.judges.claim_map import VERSIONS
 
     return list(VERSIONS)
 
@@ -724,20 +755,22 @@ class Calibrate(Command):
         self.key("split", pydra.REQUIRED, choice("dev", "heldout"), "the calibration split")
         self.key(
             "taxonomy",
-            "v1",
-            choice("v1", "v2"),
-            "v1: the taxonomy-v1 classifier on {split}.jsonl; v2: the claim map on "
-            "{split}_v2.jsonl",
+            SPANS,
+            pipeline,
+            "what to calibrate: spans = the span classifier on {split}.jsonl; claim_map = the "
+            "claim-map judge on {split}_v2.jsonl",
         )
         self.key(
-            "classifier_model", None, optional(text), "taxonomy=v1: the model (default: judge)"
+            "classifier_model", None, optional(text), "taxonomy=spans: the model (default: judge)"
         )
-        self.key("map_model", None, optional(text), "taxonomy=v2: the model (default: judge)")
+        self.key(
+            "map_model", None, optional(text), "taxonomy=claim_map: the model (default: judge)"
+        )
         self.key(
             "prompt",
             "claimmap-v2.7",
             aliased(MAP_PROMPT_NAMES, choice(_prompt_choices)),
-            "taxonomy=v2: the claim-map prompt version (plan 0029)",
+            "taxonomy=claim_map: the claim-map prompt version (plan 0029)",
         )
         anchor_key(self)
         self.key("repeats", 2, integer, "calls per case")
@@ -755,11 +788,20 @@ class Report(Command):
         self.key("out", "outputs", text, "output root")
         self.key("judge_model", DEFAULT_MODEL, text, "the judge model of the run to report")
         self.key("no_rebuild", False, boolean, "read the existing summaries instead of rebuilding")
-        self.key("view", "v1", choice("v1", "v2"), "v2: the claim-map report (plan 0002)")
         self.key(
-            "audit_n", None, optional(integer), "audit samples per leaf; default 15 (v1) / 10 (v2)"
+            "view",
+            SPANS,
+            pipeline,
+            "which report: spans = contradicted and unsupported spans; claim_map = the claim-map "
+            "report (plan 0002)",
         )
-        self.key("audit_verdict_n", 20, integer, "v2: audit samples per verdict")
+        self.key(
+            "audit_n",
+            None,
+            optional(integer),
+            "audit samples per leaf; default 15 (spans) / 10 (claim_map)",
+        )
+        self.key("audit_verdict_n", 20, integer, "claim_map: audit samples per verdict")
         self.key("seed", 0, integer, "seed of the audit sample")
         self.key(
             "readouts_root",
@@ -775,7 +817,7 @@ class Report(Command):
         return _cmd_report(self)
 
 
-class ConsistencyV2(Command):
+class Consistency(Command):
     about = "claim-map judge consistency: two fresh :M calls per sampled cell"
 
     def __init__(self) -> None:
@@ -798,7 +840,7 @@ class ConsistencyV2(Command):
         self.key("map_model", None, optional(text), "the claim-map model (default: judge)")
 
     def execute(self) -> int:
-        return cmd_consistency_v2(self)
+        return cmd_consistency(self)
 
 
 class PilotDump(Command):
@@ -820,24 +862,24 @@ class PilotDump(Command):
         return cmd_pilot_dump(self)
 
 
-class PilotDumpV2(PilotDump):
-    about = "dump real cells with production units for v2 hand-labelling"
+class PilotDumpUnits(PilotDump):
+    about = "dump real cells with their production units, unlabelled, for claim-map gold"
     stratum = (3, "cells per arm x v5c cell class")
 
     def execute(self) -> int:
-        return cmd_pilot_dump_v2(self)
+        return cmd_pilot_dump_units(self)
 
 
-class UnitsV2(Command):
-    about = "fill v2 cases' gold.units with the production unit split (leaf null)"
+class GoldUnits(Command):
+    about = "fill claim-map cases' gold.units with the production unit split (leaf null)"
 
     def __init__(self) -> None:
         super().__init__()
-        self.key("cases", pydra.REQUIRED, text, "the v2 cases file to read")
+        self.key("cases", pydra.REQUIRED, text, "the claim-map cases file to read")
         self.key("dest", pydra.REQUIRED, text, "the JSONL file to write")
 
     def execute(self) -> int:
-        return cmd_units_v2(self)
+        return cmd_gold_units(self)
 
 
 class Index(Command):
@@ -941,10 +983,10 @@ COMMANDS: dict[str, type[Command] | Group] = {
     "run": Run,
     "calibrate": Calibrate,
     "report": Report,
-    "consistency-v2": ConsistencyV2,
+    "consistency": Consistency,
     "pilot-dump": PilotDump,
-    "pilot-dump-v2": PilotDumpV2,
-    "units-v2": UnitsV2,
+    "pilot-dump-units": PilotDumpUnits,
+    "gold-units": GoldUnits,
     "index": Index,
     "final": Final,
 }
@@ -984,6 +1026,8 @@ def _fail(prog: str, message: str, usage: str) -> SystemExit:
 def _find(argv: list[str]) -> tuple[Command, list[str]]:
     """The command ``argv`` names and the arguments left for it."""
     prog, table = "hbench", commands()
+    if argv and argv[0] in COMMAND_ALIASES:
+        argv = [COMMAND_ALIASES[argv[0]], *argv[1:]]
     while True:
         if argv and argv[0] in HELP_FLAGS:
             raise _Help(_listing(prog, table))
@@ -1030,6 +1074,10 @@ def main(argv: list[str] | None = None) -> int:
         print(show_text(command))
         return 0
     try:
+        if getattr(command, "judge_backend", None):
+            from hallucination_bench import llm
+
+            llm.set_backend(command.judge_backend)
         return command.execute()
     except JudgeConfigError as e:
         print(f"JUDGE CONFIG ERROR: {e}", file=sys.stderr)

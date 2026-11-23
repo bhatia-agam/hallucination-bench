@@ -14,7 +14,7 @@ import random
 from pathlib import Path
 from typing import Any
 
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.evals.wsbench_chat.run import Models
 from hallucination_bench.judges.v5c import READ_MARK
 

@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 from conftest import write_jsonl
-from test_claimmap_v2 import MapFake, _run
+from test_claim_map import MapFake, _run
 
-from hallucination_bench import cli, report, report_v2
+from hallucination_bench import claim_map_report, cli, span_report
 from hallucination_bench.evals import bank_for
 from hallucination_bench.evals.story import bank as story_bank
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 
 JUDGE = "claude-opus-5-5"
 STORY = wrun.Models(eval="story")
@@ -32,7 +32,7 @@ def story_readouts(tmp_path: Path) -> Path:
 
 
 def _pass_chat_gate(out: Path) -> None:
-    from hallucination_bench.calibrate_v2 import result_stem
+    from hallucination_bench.calibrate_claim_map import result_stem
 
     d = out / "calibration" / wrun.model_slug(JUDGE)
     d.mkdir(parents=True)
@@ -96,7 +96,7 @@ def test_chat_gate_logic_is_unchanged(tmp_path, prose_readouts):
 def test_story_reports_render_with_story_text(tmp_path, story_readouts):
     out = tmp_path / "out"
     _run([("toy", story_readouts)], out, MapFake(), models=STORY, stages=["map"])
-    root = report_v2.report(out, JUDGE, audit_n=2, verdict_n=2, eval_name="story")
+    root = claim_map_report.report(out, JUDGE, audit_n=2, verdict_n=2, eval_name="story")
     assert root == out / "story" / wrun.model_slug(JUDGE)
     md = (root / "report_v2.md").read_text()
     assert md.startswith("# story claim map (taxonomy v2)")
@@ -107,7 +107,7 @@ def test_story_reports_render_with_story_text(tmp_path, story_readouts):
     toy_prompts = [it["prompt"] for it in story_bank.load_items() if it["id"] in TOY]
     assert any(json.dumps(p) in audit for p in toy_prompts)
     assert "chat-dailydialog" not in audit
-    root1 = report.report(out, JUDGE, audit_n=1, eval_name="story")
+    root1 = span_report.report(out, JUDGE, audit_n=1, eval_name="story")
     assert (root1 / "report.md").read_text().startswith("# story report")
     assert not (out / "wsbench_chat").exists()
 
@@ -136,7 +136,7 @@ def test_cli_eval_flag():
     with pytest.raises(SystemExit):
         p.parse_args(["run", "--eval", "nope"])
     with pytest.raises(SystemExit):
-        p.parse_args(["consistency-v2", "--eval", "story"])
+        p.parse_args(["consistency", "--eval", "story"])
 
 
 def test_claim_map_prompt_is_unchanged_for_story():

@@ -18,7 +18,7 @@ from hallucination_bench.evals.overrefusal import offtopic_export as ox
 from hallucination_bench.evals.overrefusal import sj_metrics, sjudge
 from hallucination_bench.evals.wsbench_chat import bank
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.llm import JudgeConfigError
 from hallucination_bench.readouts import Cell
 

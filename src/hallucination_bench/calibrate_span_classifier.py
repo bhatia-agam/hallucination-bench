@@ -1,4 +1,4 @@
-"""Calibrate the taxonomy classifier on hand-labelled cases and apply the held-out gate.
+"""Calibrate the span classifier on hand-labelled cases and apply the held-out gate.
 
 Cases (``data/calibration/{dev,heldout}.jsonl``, schema in ``data/calibration/README.md``) carry
 exactly what the classifier sees in production: a prompt, a marked response, readouts and a
@@ -12,18 +12,18 @@ aggregates are reported (no per-span lists), so held-out errors cannot leak into
 
 import asyncio
 import json
-import math
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 from hallucination_bench import DATA
-from hallucination_bench import taxonomy as tx
+from hallucination_bench import span_taxonomy as tx
 from hallucination_bench.cache import Cache, fingerprint
-from hallucination_bench.judges import taxonomy_v1 as tv1
+from hallucination_bench.judges import span_classifier as tv1
 from hallucination_bench.judges.v5c import READ_MARK
 from hallucination_bench.llm import LLM, Usage
+from hallucination_bench.stats import wilson
 
 CAL_DIR = DATA / "calibration"
 SPLITS = ("dev", "heldout")
@@ -164,15 +164,6 @@ async def classify_cases(
 
 
 # ---------------------------------------------------------------- metrics
-
-
-def wilson(p: float | None, n: int, z: float = 1.959964) -> list[float] | None:
-    if p is None or n == 0:
-        return None
-    d = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / d
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return [max(0.0, centre - half), min(1.0, centre + half)]
 
 
 def qwk(gold: Sequence[int], pred: Sequence[int], cats: Sequence[int] = (1, 2, 3)) -> float | None:

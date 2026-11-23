@@ -5,12 +5,12 @@ marker) and its located contradiction is only after the marker, whatever its inc
 v2.7 is untouched."""
 
 import pytest
-from test_claimmap_v2 import e
+from test_claim_map import e
 from test_continuation import _parse, ct
 
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench import index as ix
-from hallucination_bench import taxonomy_v2 as tx
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 
 V27, V28 = "claimmap-v2.7", "claimmap-v2.8"
 S7, S8 = cm.VERSIONS[V27].system, cm.VERSIONS[V28].system

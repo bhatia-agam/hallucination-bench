@@ -10,11 +10,11 @@ from pathlib import Path
 import pytest
 from conftest import FakeLLM
 
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.cli import build_parser
+from hallucination_bench.evals.wsbench_chat import claim_map_score
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat import score_v2
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.llm import CallResult, Usage
 from hallucination_bench.units import split_cell
 
@@ -473,10 +473,10 @@ def test_character_weighted_shares_average_per_readout_and_identities_hold():
         _rec("c", 44, [[(tx.FAILED, 7)]], map_status="failed"),
         _rec("d", 44, [[("detail", 9)]], map_status="pending"),
     ]
-    acc = score_v2.AccumulatorV2()
+    acc = claim_map_score.AccumulatorV2()
     for r in recs:
         acc.add(r)
-    b = score_v2.block(acc.cells, n_boot=50)
+    b = claim_map_score.block(acc.cells, n_boot=50)
     cs = {g: v["value"] for g, v in b["char_share_group"].items()}
     assert b["n_share_readouts"] == 4  # pending cell left out
     assert cs[tx.HALLUCINATION] == pytest.approx((30 / 40) / 4)
@@ -507,10 +507,10 @@ def test_specific_denominator_transition_and_alt_view():
             cls="hallucinated",
         ),
     ]
-    acc = score_v2.AccumulatorV2()
+    acc = claim_map_score.AccumulatorV2()
     for r in recs:
         acc.add(r)
-    b = score_v2.block(acc.cells, n_boot=20)
+    b = claim_map_score.block(acc.cells, n_boot=20)
     assert b["n_rate_readouts"] == {"all": 3, "specific": 2}
     assert b["rates"]["hallucination"]["specific"]["value"] == 1.0
     assert b["rates"]["hallucination_alt"]["specific"]["value"] == 0.5
@@ -532,25 +532,27 @@ def test_verify_agreement_uses_the_majority_leaf_of_the_quote():
         "disputed": ["aaa bbbbbbbbbbbb"],
         "off_topic": ["zzz"],
     }
-    acc = score_v2.AccumulatorV2()
+    acc = claim_map_score.AccumulatorV2()
     acc.add(r)
-    ag = score_v2.agreement(acc.cells)
+    ag = claim_map_score.agreement(acc.cells)
     assert ag["true"]["n_agree"] == 1 and ag["unverifiable"]["n_agree"] == 1
     assert ag["disputed"]["leaves"] == {"supplementary_false": 1} and ag["disputed"]["n_agree"] == 1
     assert ag["off_topic"]["n_unlocated"] == 1
 
 
-def test_pilot_dump_v2_gives_unlabelled_cells_with_production_units(tmp_path, prose_readouts):
-    from hallucination_bench import calibrate_v2, report_v2
+def test_pilot_dump_units_gives_unlabelled_cells_with_production_units(tmp_path, prose_readouts):
+    from hallucination_bench import calibrate_claim_map, claim_map_report
 
     out = tmp_path / "out"
     _run([("toy", prose_readouts)], out, MapFake(), stages=["span"])
-    cases = report_v2.pilot_dump_v2(out, "claude-opus-5-5", ["toy"], per_stratum=2, seed=0)
+    cases = claim_map_report.pilot_dump_units(
+        out, "claude-opus-5-5", ["toy"], per_stratum=2, seed=0
+    )
     assert cases and all(c["part"] == "real" for c in cases)
     classes = {c["source"]["v5c_cell_class"] for c in cases}
     assert "hallucinated" in classes
     for c in cases:
-        assert calibrate_v2.validate_case(c, require_gold=False) == []
+        assert calibrate_claim_map.validate_case(c, require_gold=False) == []
         assert all(g["leaf"] is None for g in c["gold"]["units"])
     hal = next(c for c in cases if c["source"]["v5c_cell_class"] == "hallucinated")
     assert any(g["established"] and g["text"] == "Paris" for g in hal["gold"]["units"])

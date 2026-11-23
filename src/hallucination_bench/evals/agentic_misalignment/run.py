@@ -59,8 +59,8 @@ from hallucination_bench.evals.wsbench_chat.run import (
     reconcile_all,
     with_recorded_prompt,
 )
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import claimmap_am as cam
-from hallucination_bench.judges import claimmap_v2 as cm
 from hallucination_bench.judges import continuation_verifier as cv
 from hallucination_bench.llm import LLM, JudgeConfigError, Usage, joint_llm
 from hallucination_bench.readouts import Cell, decode_token, load_readouts, sha256_file

@@ -27,8 +27,18 @@ TOKENS = {
 }
 
 
+# what the snapshot calls by an earlier spelling: commands and the view / taxonomy values
+SNAPSHOT["defaults"] = {
+    cli.COMMAND_ALIASES.get(name, name): keys for name, keys in SNAPSHOT["defaults"].items()
+}
+
+
 def _expected(values: dict) -> dict:
-    return {k: TOKENS.get(v, v) if isinstance(v, str) else v for k, v in values.items()}
+    out = {k: TOKENS.get(v, v) if isinstance(v, str) else v for k, v in values.items()}
+    for key in ("view", "taxonomy"):
+        if key in out:
+            out[key] = cli.PIPELINE_ALIASES.get(out[key], out[key])
+    return out
 
 
 def _leaves(table: dict | None = None, path: tuple[str, ...] = ()):
@@ -99,7 +109,8 @@ def test_key_value_spelling_gives_the_same_values(case):
     argv = case["argv"]
     if any(a.startswith("b=/x/b,c") for a in argv):  # a comma inside one repeated value:
         pytest.skip("only the old spelling can carry it")  # key=a,b always means two values
-    n = 2 if isinstance(cli.commands()[argv[0]], tuple) else 1
+    name = cli.COMMAND_ALIASES.get(argv[0], argv[0])
+    n = 2 if isinstance(cli.commands()[name], tuple) else 1
     new = _new_spelling(argv, n)
     assert _values(new) == _expected(case["values"])
 
@@ -203,9 +214,9 @@ def test_one_command_runs_another_through_pydra():
 def test_descriptive_names_resolve_to_the_values_they_stand_for(capsys):
     """`map_prompt=current` and `bank=main` are replaced at parse time, so the command holds
     (and a run records) the value itself; the value's own spelling still works."""
-    from hallucination_bench import taxonomy_v2
+    from hallucination_bench import claim_map_taxonomy
 
-    assert cli.MAP_PROMPT_NAMES == {"current": taxonomy_v2.V29}
+    assert cli.MAP_PROMPT_NAMES == {"current": claim_map_taxonomy.V29}
     assert cli.BANK_NAMES == {"main": "x3"}
     shown = []
     for argv in (

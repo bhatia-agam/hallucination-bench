@@ -4,13 +4,13 @@ noise (consistency-v2 r0 vs r1, the "judge noise ±" column)."""
 import json
 
 import pytest
-from test_claimmap_v2 import MapFake, _run, e, prompt_quote, sp, unit_lines
+from test_claim_map import MapFake, _run, e, prompt_quote, sp, unit_lines
 
-from hallucination_bench import consistency_v2 as cons
-from hallucination_bench import report_v2
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import claim_map_consistency as cons
+from hallucination_bench import claim_map_report
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.units import split_cell
 
 CONV = cm.conversation_text(
@@ -190,9 +190,9 @@ def test_report_has_noise_column_section_and_quoted_examples(tmp_path, prose_rea
 
     out = tmp_path / "out"
     _run([("toy", prose_readouts)], out, MapFake({"map": mapper}), stages=["map"])
-    root = report_v2.report(out, "claude-opus-5-5", audit_n=1, verdict_n=1)
+    root = claim_map_report.report(out, "claude-opus-5-5", audit_n=1, verdict_n=1)
     md = (root / "report_v2.md").read_text()
-    assert report_v2.NOISE_HEAD in md and "**Not run for this prompt version**" in md
+    assert claim_map_report.NOISE_HEAD in md and "**Not run for this prompt version**" in md
     assert "Hallucination examples (with the quote that contradicts them)" in md
     ex = md.split("Hallucination examples")[1]
     assert "| detail |" in ex and "contradicted_by" in ex
@@ -202,7 +202,7 @@ def test_report_has_noise_column_section_and_quoted_examples(tmp_path, prose_rea
     res = cons.score([_cell("toy", ["detail", "correct"], ["false_claim", "correct"])])
     res.update({"arms": "toy:44", "n_per_arm": 1, "seed": 0})
     (cdir / f"consistency_{cm.PROMPT_VERSION}.json").write_text(json.dumps(res))
-    root = report_v2.report(out, "claude-opus-5-5", rebuild=False, audit_n=1, verdict_n=1)
+    root = claim_map_report.report(out, "claude-opus-5-5", rebuild=False, audit_n=1, verdict_n=1)
     md = (root / "report_v2.md").read_text()
     assert "h 0.0 / fc 50.0 / d 50.0" in md  # readout-rate noise of the toy sample
     assert "Claim-map judge consistency" in md and "Not run for this prompt" not in md

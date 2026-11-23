@@ -57,7 +57,7 @@ from pathlib import Path
 from typing import Any
 
 from hallucination_bench import index as ix
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 
 MAX_FAILED_SHARE = 0.01
 # plan 0029: the main family is judged on plan 0028's bank (arm.json `bank` / `bank_source`)

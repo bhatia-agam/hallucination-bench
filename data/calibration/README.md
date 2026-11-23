@@ -47,7 +47,7 @@ spans, written by `pilot-dump`) and `spans[].sampled` (which spans the pilot dum
 The label definitions and rules live in `src/hallucination_bench/taxonomy.py` (the single source
 of truth, rendered into the classifier prompt). Label from that file, not from memory.
 
-The case is rendered exactly as in production (`taxonomy_v1.render_prompt`): the prompt, the
+The case is rendered exactly as in production (`span_classifier.render_prompt`): the prompt, the
 marked response, every readout as `<readout idx="i">`, and the numbered span list with each
 span's readout index and grounding. The classifier never sees earlier stages' `why` text.
 
@@ -68,7 +68,7 @@ Every case is invented; no real readout or bench item is used. Readout styles mi
 lenses: O-lens bullet lists with code-switched Chinese and English fragments, NLA
 `<explanation>` prose, and one-to-two-sentence summariser interpretations ("The model is ...").
 
-Coverage (asserted by `tests/test_taxonomy_judge.py::test_dev_cases_are_valid_and_meet_the_coverage_requirements`):
+Coverage (asserted by `tests/test_span_classifier.py::test_dev_cases_are_valid_and_meet_the_coverage_requirements`):
 
 | requirement | dev |
 |---|---|
@@ -80,7 +80,7 @@ Coverage (asserted by `tests/test_taxonomy_judge.py::test_dev_cases_are_valid_an
 | severity 1 / 2 / 3 | 13 / 17 / 12 |
 | disputed spans | 5 |
 
-Gold labelling notes (judgement calls, all following `taxonomy.py`):
+Gold labelling notes (judgement calls, all following `span_taxonomy.py`):
 
 - Unsupported claims about the conversation (an invented intent, the user's situation, a
   claimed fact the response "notes") are `concept`; invented specific values attached to
@@ -141,9 +141,9 @@ Gold-label fixes: none.
 # Claim-map (taxonomy v2) calibration cases (plan 0002)
 
 Files: `dev_v2.jsonl` (implementer), `heldout_v2.jsonl` (blind author only; never written or
-edited by the implementer). `hbench calibrate --taxonomy v2 --split dev|heldout` validates every
-case (`calibrate_v2.validate_case`) and refuses to run on an invalid file. The leaf definitions
-and rules live in `src/hallucination_bench/taxonomy_v2.py` (rendered into the judge prompt);
+edited by the implementer). `hbench calibrate --taxonomy claim_map --split dev|heldout` validates every
+case (`calibrate_claim_map.validate_case`) and refuses to run on an invalid file. The leaf definitions
+and rules live in `src/hallucination_bench/claim_map_taxonomy.py` (rendered into the judge prompt);
 label from that file, plan 0002 §Units, §The tree, §Precedence, §Detail rule and §Tags.
 
 ## Workflow (gold uses the production unit split)
@@ -151,9 +151,9 @@ label from that file, plan 0002 §Units, §The tree, §Precedence, §Detail rule
 1. Write the case without gold: `case_id`, `part`, `rules`, `kind`, `prompt`, `response` (with
    `⟦READ⟧` exactly once), `readouts`, `established`.
 2. Run the production splitter over it:
-   `uv run hbench units-v2 --cases draft.jsonl --dest skeleton.jsonl`. This fills
+   `uv run hbench gold-units --cases draft.jsonl --dest skeleton.jsonl`. This fills
    `gold.units` with one entry per production unit (`id`, `text`, `established`, `leaf: null`).
-   Real cells come pre-split from `hbench pilot-dump-v2` (stratified by arm × v5c cell class;
+   Real cells come pre-split from `hbench pilot-dump-units` (stratified by arm × v5c cell class;
    it never shows claim-map output, so the labeller stays blind).
 3. Label exactly those units: set `leaf`, or, for a unit that carries more than one claim or
    mixes claim and non-claim text, give `splits` (verbatim, in-order, non-overlapping sub-spans
@@ -171,7 +171,7 @@ label from that file, plan 0002 §Units, §The tree, §Precedence, §Detail rule
 | field | type | rule |
 |---|---|---|
 | `case_id` | string | unique within the file |
-| `part` | `"synthetic"` \| `"real"` | `real` = a stored cell (`hbench pilot-dump-v2`); default `synthetic` |
+| `part` | `"synthetic"` \| `"real"` | `real` = a stored cell (`hbench pilot-dump-units`); default `synthetic` |
 | `rules` | list of strings | optional tags naming the anchors / rules the case exercises |
 | `kind` | `"prose"` \| `"tokens"` | `tokens` = the readout is a summariser interpretation of a token bag (the prompt then says so); default `prose` |
 | `prompt` | string | the user prompt |
@@ -180,7 +180,7 @@ label from that file, plan 0002 §Units, §The tree, §Precedence, §Detail rule
 | `established` | list (one per readout) of lists of strings | the v5c verified `wrong` spans of each readout (revoked or not); each must occur in its readout (`verify_quote` normalisation); overlapping ones are merged; each becomes its own unit. Optional (default none) |
 | `source` | object | optional (`{arm, key, v5c_cell_class}` for real cells) |
 | `gold.units[]` | list | **every** production unit, in order |
-| `gold.units[].id`, `.text`, `.established` | | copied from the splitter (`units-v2` / `pilot-dump-v2`); never edit |
+| `gold.units[].id`, `.text`, `.established` | | copied from the splitter (`gold-units` / `pilot-dump-units`); never edit |
 | `gold.units[].leaf` | one of the 12 leaves \| `null` | the unit's leaf when it is not split. `null` with no splits = unlabelled context (allowed on `real` cases only; not scored) |
 | `gold.units[].splits[]` | `{text, leaf}` | sub-spans, verbatim from the unit, left to right, non-overlapping |
 | `gold.units[].rest_leaf` | leaf \| `null` | required when `splits` leave a remainder |
@@ -191,7 +191,7 @@ Leaves (taxonomy v2, plan rev 16): `non_claim`, `correct`, `detail`, `false_clai
 `substitution_sibling`, `substitution_category`, `model_state`, `unverifiable`,
 `supplementary_true`, `supplementary_false`, `ambiguous_topic`, `off_topic`. Gold never uses the
 code-only `unknown_incorrect` / `failed`. Every leaf of revs 12–15 is merged on load
-(`taxonomy_v2.LEAF_RENAMES`; the carried tags go under `tags` / `rest_tags`, e.g.
+(`claim_map_taxonomy.LEAF_RENAMES`; the carried tags go under `tags` / `rest_tags`, e.g.
 `stated_after` -> `correct` + `{source: after}`). Optional gold `tags` are informational.
 
 Single-call mode (the default since rev 13): established spans still make their own units (ids
@@ -199,7 +199,7 @@ stay stable) but the flags are not shown to the judge; an established unit is sc
 its gold leaf (for a disputed one, its non-incorrect gold leaf). The gate adds verdict accuracy
 (6 verdicts, unit level, ≥ 85%).
 
-Scoring (`calibrate_v2`): units are shared, so prediction and gold match one to one by unit.
+Scoring (`calibrate_claim_map`): units are shared, so prediction and gold match one to one by unit.
 Recall rows, per-leaf recall and sibling-vs-category are per **gold segment** (the
 majority-character predicted leaf over that segment's characters); accuracies and the flip rate
 are per **unit** (each side's majority-character leaf); the claim/non-claim F1 and the
@@ -210,7 +210,7 @@ scored by the judge's `alt_leaf` (disputed) or raw leaf (forced).
 
 45 cases, 187 gold units, written from scratch by the implementer (Claude, 2026-10-11) with
 `scripts/build_dev_v2.py` (the labels live there; re-run it if the splitter changes). Every
-case is invented. Coverage (asserted by `tests/test_calibrate_v2.py`): ≥ 3 gold segments for
+case is invented. Coverage (asserted by `tests/test_calibrate_claim_map.py`): ≥ 3 gold segments for
 every leaf (min 3, e.g. 5 sibling and 4 category substitutions, 9 false_claim, 13 detail;
 segment counts skip pure-punctuation fragments), token-summary "The model is …" framing as
 `filler` (rev 11, `dev2-28/29`), 8
@@ -238,7 +238,7 @@ output); new anchors dev2-42 (context word -> `detail`), dev2-43 (flood in a tob
 `false_claim`), dev2-44 (spill cleaned up, welcome to Oakville -> `unverifiable`), dev2-45
 ("3. Baking soda" -> `unverifiable`, `same_slot_alternative`).
 
-Gold-labelling notes (judgement calls, following `taxonomy_v2.py` defaults):
+Gold-labelling notes (judgement calls, following `claim_map_taxonomy.py` defaults):
 
 - `dev2-20`: the response says India's capital is Mumbai; the readout's "The capital will be
   named as Mumbai" is `stated_after` (rule 6, tag `world_false`), and "The capital of India is
@@ -251,7 +251,7 @@ Gold-labelling notes (judgement calls, following `taxonomy_v2.py` defaults):
   `model_state` (plan rev 11, rule 1).
 - **Version-aware gold (plan 0029, claimmap-v2.8):** every date or time is `detail` in v2.8,
   real-world events included (Camila, 2026-11-04). The file keeps the v2.7 gold; calibrating
-  `--prompt claimmap-v2.8` applies `calibrate_v2.GOLD_OVERRIDES_V28` (recorded as
+  `--prompt claimmap-v2.8` applies `calibrate_claim_map.GOLD_OVERRIDES_V28` (recorded as
   `gold_overrides` in the result): `dev2-06-titanic` R0.U3 split "14 April 1911" and
   `dev2-23-penicillin` R0.U3 ("- The discovery happened in 1938") go `false_claim` -> `detail`.
   These are the only real-world-date gold segments in dev_v2 (rule tag `real-event-date`).
@@ -260,7 +260,7 @@ Gold-labelling notes (judgement calls, following `taxonomy_v2.py` defaults):
 
 Not written by the implementer. (a) ≥ 120 synthetic gold units by a fresh-context subagent that
 sees only plan 0002 §Units, §The tree, §Precedence, §Detail rule and §Tags, following the
-workflow above; (b) ≥ 120 real units from `hbench pilot-dump-v2` cells (arms s3d-rl600,
+workflow above; (b) ≥ 120 real units from `hbench pilot-dump-units` cells (arms s3d-rl600,
 nla-rl-L42, jlens, sae-l42, patchscopes; stratified by v5c class), hand-labelled blind and frozen
 before the first check. Minimums and the gate are in plan 0002 §Calibration. At most 3 held-out
 checks, each logged below.

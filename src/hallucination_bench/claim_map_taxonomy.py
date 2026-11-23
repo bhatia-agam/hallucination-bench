@@ -1,7 +1,7 @@
-"""THE claim-map taxonomy (v2): leaves, groups, definitions, precedence, tags and decisions.
+"""THE claim-map taxonomy: leaves, groups, definitions, precedence, tags and decisions.
 
 Plan 0002 (``plans/0002-claim-map-taxonomy-v2.md``). This module is the single source of truth:
-the claim-map judge prompt (``judges/claimmap_v2.py``) is rendered from it by :func:`render`,
+the claim-map judge prompt (``judges/claim_map.py``) is rendered from it by :func:`render`,
 scoring and calibration read its enums, and tests assert the rendered prompt contains every
 leaf definition (:func:`definitions`).
 
@@ -18,7 +18,7 @@ contradicts it. Predictions get no category of their own (rev 16 rule 1). Rev 17
 quote its evidence: every incorrect segment carries ``contradicted_by`` and every ``correct``
 segment (except ``source = entailed``) carries ``supported_by``, a verbatim span of the
 conversation; code checks the quote and fails closed to ``unverifiable``
-(``judges/claimmap_v2.parse``).
+(``judges/claim_map.parse``).
 
 The prompt is rendered in two modes: single-call (the default; no established v5c spans, so
 rule 2 and the ``dispute`` tag are left out) and ``anchored`` (``--anchor v5c``: plan rev 12

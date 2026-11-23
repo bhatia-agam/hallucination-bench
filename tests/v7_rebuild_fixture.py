@@ -41,8 +41,8 @@ from hallucination_bench.evals.agentic_misalignment import detect, intent, verif
 from hallucination_bench.evals.agentic_misalignment import run as amrun
 from hallucination_bench.evals.wsbench_chat import bank as chat_bank
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
-from hallucination_bench.judges import taxonomy_v1 as tv1
+from hallucination_bench.judges import claim_map as cm
+from hallucination_bench.judges import span_classifier as tv1
 from hallucination_bench.judges import v5c
 from hallucination_bench.llm import CallResult, Usage
 

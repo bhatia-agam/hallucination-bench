@@ -319,7 +319,7 @@ def test_cli_dispatch_and_report(tmp_path, prose_file, monkeypatch):
         )
     with pytest.raises(SystemExit, match="--items"):
         cli.main(["run", "--readouts-root", str(tmp_path), "--items", MIS])
-    with pytest.raises(SystemExit, match="no --view v2"):
+    with pytest.raises(SystemExit, match="no --view claim_map"):
         cli.main(["report", "--eval", "agentic_misalignment", "--view", "v2"])
     assert p.parse_args(["report"]).readouts_root is None
     # hbench run --eval agentic_misalignment with a stub LLM

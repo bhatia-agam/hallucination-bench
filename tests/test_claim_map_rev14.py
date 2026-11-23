@@ -5,12 +5,12 @@ import asyncio
 import json
 
 import pytest
-from test_claimmap_v2 import MapFake, _cells, _run, default_map
+from test_claim_map import MapFake, _cells, _run, default_map
 
-from hallucination_bench import calibrate_v2 as cal
-from hallucination_bench import taxonomy_v2 as tx
+from hallucination_bench import calibrate_claim_map as cal
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 
 
 def test_unrealised_leaves_merge_into_unverifiable():

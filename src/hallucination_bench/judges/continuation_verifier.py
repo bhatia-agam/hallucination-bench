@@ -46,7 +46,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from hallucination_bench.cache import Cache, fingerprint
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.llm import Usage, schema_block
 
 VERSION = "cverify-v1"

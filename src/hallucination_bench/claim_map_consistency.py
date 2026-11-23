@@ -1,7 +1,7 @@
 """Judge-consistency check for the claim map (plan 0002 rev 16): two fresh ``:M`` calls per
 real cell, leaf agreement between the runs.
 
-``hbench consistency-v2 --arms s3d-rl600:44,nla-rl-L42:42,jlens:44 --n 50 --seed 0`` samples
+``hbench consistency --arms s3d-rl600:44,nla-rl-L42:42,jlens:44 --n 50 --seed 0`` samples
 ``n`` non-empty cells per ``arm:layer`` (seeded; token arms only among cells whose summary is
 cached in ``<arm>/cache.jsonl``), maps each twice in single-call mode (repeat keys ``r0`` / ``r1``
 in ``outputs/consistency/<model>/cache.jsonl``; the repeat index is in the fingerprint, so each
@@ -28,13 +28,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench import summarizer
-from hallucination_bench import taxonomy_v2 as tx
 from hallucination_bench.cache import Cache, fingerprint
 from hallucination_bench.evals.wsbench_chat import bank
 from hallucination_bench.evals.wsbench_chat import run as wrun
-from hallucination_bench.evals.wsbench_chat.score_v2 import majority_leaf
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.evals.wsbench_chat.claim_map_score import majority_leaf
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.llm import LLM, Usage
 from hallucination_bench.readouts import Cell, decode_token
 from hallucination_bench.units import Unit, split_cell

@@ -1,6 +1,6 @@
-"""THE hallucination taxonomy (v1): labels, definitions, examples and rules.
+"""THE span taxonomy: labels, definitions, examples and rules for a hallucinated span.
 
-This module is the single source of truth. The classifier prompt (``judges/taxonomy_v1.py``)
+This module is the single source of truth. The classifier prompt (``judges/span_classifier.py``)
 is rendered from it by :func:`render`, scoring reads its enums, and the calibration README
 points here. Tests assert that the rendered prompt contains every label and definition.
 

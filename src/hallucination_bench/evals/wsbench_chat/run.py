@@ -50,9 +50,9 @@ from typing import Any
 from hallucination_bench import summarizer
 from hallucination_bench.cache import Cache, fingerprint
 from hallucination_bench.evals import bank_for
-from hallucination_bench.judges import claimmap_v2 as cm
+from hallucination_bench.judges import claim_map as cm
 from hallucination_bench.judges import continuation_verifier as cv
-from hallucination_bench.judges import taxonomy_v1 as tv1
+from hallucination_bench.judges import span_classifier as tv1
 from hallucination_bench.judges import v5c
 from hallucination_bench.llm import LLM, JudgeConfigError, Usage, joint_llm
 from hallucination_bench.readouts import (
@@ -126,7 +126,7 @@ class Models:
     # plan 0007: which bank / output root. Deliberately NOT in to_dict() (summary.json's
     # config.models stays unchanged for wsbench_chat); _write_arm_json writes it to arm.json.
     eval: str = "wsbench_chat"
-    # plan 0029: the claim-map prompt (claimmap_v2.VERSIONS key; AM: the chat version its
+    # plan 0029: the claim-map prompt (claim_map.VERSIONS key; AM: the chat version its
     # claimmap_am spec uses). In to_dict() / arm.json only when it is not claimmap-v2.7, so every
     # v3-v7 output is unchanged; a missing record means claimmap-v2.7.
     map_prompt: str = cm.PROMPT_VERSION
@@ -1103,7 +1103,7 @@ async def rebuild_arm_async(
 ) -> dict[str, Any]:
     """Regenerate ``cells.jsonl`` and ``summary.json`` from the cache over every judged layer
     (layers with any cache row). Streams records to disk; keeps slim score records only."""
-    from . import score, score_v2
+    from . import claim_map_score, span_score
 
     models = with_recorded_prompt(arm_dir(out_root, models, name), models)
     replay_bank(arm_dir(out_root, models, name), models)
@@ -1113,8 +1113,8 @@ async def rebuild_arm_async(
     expected = arm.bank.expected_grid(items, layers)
     cells = [c for c in arm.cells if c.layer in layers]
     missing = missing_cells(cells, expected)
-    acc = score.Accumulator(k=arm.k)
-    acc2 = score_v2.AccumulatorV2(version=models.map_prompt, verifier=_acc_verifier(models))
+    acc = span_score.Accumulator(k=arm.k)
+    acc2 = claim_map_score.AccumulatorV2(version=models.map_prompt, verifier=_acc_verifier(models))
     map_layers = {
         int(m.group(1)) for k in arm.cache.keys() if k.endswith(":M") and (m := _LAYER_RE.search(k))
     }
@@ -1156,7 +1156,7 @@ async def rebuild_arm_async(
         "readouts_sha256": sha256_file(arm.readouts),
         "judged_layers": layers,
     }
-    from hallucination_bench.calibrate_v2 import gate_passed
+    from hallucination_bench.calibrate_claim_map import gate_passed
 
     config_v2 = {
         **config,
@@ -1169,7 +1169,7 @@ async def rebuild_arm_async(
             else True
         ),
     }
-    summary = score.summarize(
+    summary = span_score.summarize(
         acc,
         config=config,
         n_missing=len(missing),
@@ -1184,7 +1184,7 @@ async def rebuild_arm_async(
     (arm.dir / "summary.json").write_text(json.dumps(summary, indent=1) + "\n")
     p2 = arm.dir / "summary_v2.json"
     if any(c.map_status in ("ok", "failed") for c in acc2.cells):
-        s2 = score_v2.summarize(acc2, config=config_v2, spend=spend["map"].to_dict())
+        s2 = claim_map_score.summarize(acc2, config=config_v2, spend=spend["map"].to_dict())
         p2.write_text(json.dumps(s2, indent=1) + "\n")
     elif p2.exists():
         p2.unlink()
@@ -1532,7 +1532,7 @@ def run_joint(*args: Any, **kwargs: Any) -> dict[str, Any]:
 async def rebuild_joint_async(name: str, out_root: Path, models: Models) -> dict[str, Any]:
     """Regenerate ``cells_joint.jsonl`` and ``summary_joint_v2.json`` from the cache (no API
     calls), with the sources / layers / prompt recorded in ``joint.json``."""
-    from . import score_v2
+    from . import claim_map_score
 
     d = arm_dir(out_root, models, name)
     replay_bank(d, models)
@@ -1549,7 +1549,7 @@ async def rebuild_joint_async(name: str, out_root: Path, models: Models) -> dict
     _check_joint_models(models)
     sources = [(n, Path(p)) for n, p in rec_j["sources"]]
     arm, jcells = _joint_arm(name, sources, out_root, models, rec_j["layers"], readonly=True)
-    acc2 = score_v2.AccumulatorV2(version=models.map_prompt, verifier=_acc_verifier(models))
+    acc2 = claim_map_score.AccumulatorV2(version=models.map_prompt, verifier=_acc_verifier(models))
     tmp = d / f"{JOINT_CELLS}.{os.getpid()}.tmp"
     n = dict.fromkeys(("judged", "pending", "empty", "failed_summary"), 0)
     with tmp.open("w", encoding="utf-8") as fh:
@@ -1579,6 +1579,6 @@ async def rebuild_joint_async(name: str, out_root: Path, models: Models) -> dict
         "sample": 0,
         "n_cells": n,
     }
-    s2 = score_v2.summarize(acc2, config=config, spend=spend.to_dict())
+    s2 = claim_map_score.summarize(acc2, config=config, spend=spend.to_dict())
     (d / JOINT_SUMMARY).write_text(json.dumps(s2, indent=1) + "\n")
     return s2

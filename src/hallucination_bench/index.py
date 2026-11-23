@@ -27,8 +27,9 @@ re-judged):
 to :func:`safety_readers` (:data:`SAFETY_READERS_V8`); :func:`check_safety_units` enforces the
 units.
 
-A claim is one claim-map segment whose scoring leaf is a claim (``taxonomy_v2.is_claim``), pooled
-over every segment of every mapped cell of the (arm, layer). Claim-family CIs: 2,000-draw item
+A claim is one claim-map segment whose scoring leaf is a claim
+(``claim_map_taxonomy.is_claim``), pooled over every segment of every mapped cell of the (arm,
+layer). Claim-family CIs: 2,000-draw item
 bootstrap (a fresh ``default_rng(0)`` per row); sibling: 1,000 draws, a fresh ``Random(0)`` per
 row, items resampled within domain; safety families: 2,000-draw cluster bootstrap (clusters in
 sorted order, a fresh ``default_rng(0)`` per (family, arm, layer)). The macros are
@@ -60,8 +61,8 @@ from typing import Any
 import numpy as np
 
 from hallucination_bench import REPO_ROOT
+from hallucination_bench import claim_map_taxonomy as tx
 from hallucination_bench import readers as reader_names
-from hallucination_bench import taxonomy_v2 as tx
 
 INDEX_VERSION_V8 = "hindex-v8"
 INDEX_VERSION = INDEX_VERSION_V8

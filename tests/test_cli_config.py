@@ -121,6 +121,7 @@ def test_translation_forms():
     assert run("arm=a=1", "arm=b=2")["arm"] == ["a=1", "b=2"] == run("arm=a=1,b=2")["arm"]
     assert run("--arm", "a=1,x", "--arm=b=2")["arm"] == ["a=1,x", "b=2"]
     assert run("--rebuild", "rebuild=False")["rebuild"] is False  # the last one wins
+    assert _values(["try", "-n", "5"])["n"] == 5 == _values(["try", "n=5"])["n"]
     assert _values(["overrefusal", "grow", "pairs"])["step"] == "pairs"
 
 

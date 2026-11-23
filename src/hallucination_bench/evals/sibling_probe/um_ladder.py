@@ -44,6 +44,76 @@ METHOD_LABEL = {
     "jlens": "J-lens",
     NLA42: "NLA-RL L42",
 }
+# How a method's readout record becomes samples: ``tokens`` = one token bag per cell (judged
+# through its summary), ``packed`` = prose samples packed into ``"- a\n- b"`` strings,
+# ``prose`` = one sample per list entry. A method named nowhere reads as ``prose``.
+KIND_TOKENS, KIND_PACKED, KIND_PROSE = "tokens", "packed", "prose"
+KINDS = (KIND_TOKENS, KIND_PACKED, KIND_PROSE)
+METHOD_KIND = {
+    "s3d": KIND_PACKED,
+    "mlnla-rl600": KIND_PROSE,
+    "jlens": KIND_TOKENS,
+    NLA42: KIND_PROSE,
+}
+FIXED_LAYER = {NLA42: 42}  # single-layer methods: the model layer every one of their cells reads
+_extra_kind: dict[str, str] = {}
+_extra_label: dict[str, str] = {}
+_extra_layer: dict[str, int] = {}
+_selected: tuple[str, ...] | None = None
+
+
+def add_method(
+    name: str, kind: str = KIND_PROSE, *, label: str | None = None, fixed_layer: int | None = None
+) -> None:
+    """Declare one more method for the rest of the process. The four built-in methods and the
+    module constants never change: re-declaring a built-in name with other settings raises."""
+    if kind not in KINDS:
+        raise ValueError(f"method {name!r}: kind {kind!r} is not one of {KINDS}")
+    if name in METHOD_KIND:
+        if kind != METHOD_KIND[name] or fixed_layer != FIXED_LAYER.get(name):
+            raise ValueError(f"method {name!r} is built in: its kind and layer are fixed")
+        return
+    _extra_kind[name] = kind
+    _extra_label[name] = label or name
+    if fixed_layer is None:
+        _extra_layer.pop(name, None)
+    else:
+        _extra_layer[name] = int(fixed_layer)
+
+
+def select_methods(names: Sequence[str] | None) -> None:
+    """The methods one run covers, in order (``None`` = the built-in :data:`METHODS`)."""
+    global _selected
+    if names is None:
+        _selected = None
+        return
+    unknown = [n for n in names if n not in METHOD_KIND and n not in _extra_kind]
+    if unknown or len(set(names)) != len(names):
+        raise ValueError(f"unknown or repeated methods: {unknown or list(names)}")
+    _selected = tuple(names)
+
+
+def reset_methods() -> None:
+    """Forget :func:`add_method` / :func:`select_methods` (tests)."""
+    _extra_kind.clear()
+    _extra_label.clear()
+    _extra_layer.clear()
+    select_methods(None)
+
+
+def methods() -> tuple[str, ...]:
+    """The methods of this run: :data:`METHODS` unless :func:`select_methods` chose others."""
+    return METHODS if _selected is None else _selected
+
+
+def method_kind(method: str) -> str:
+    return METHOD_KIND.get(method) or _extra_kind.get(method, KIND_PROSE)
+
+
+def method_label(method: str) -> str:
+    return METHOD_LABEL.get(method) or _extra_label.get(method, method)
+
+
 GRID_LAYERS = (20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60)
 PROBE_LAYERS = tuple(sorted((*GRID_LAYERS, 42)))
 # plan rev 9 (Camila: "qualify china at L40 if the probe fires at L39"): the model layers next
@@ -347,7 +417,8 @@ def uid_of(method: str, item: str, layer: int, pos: int, concept: str) -> str:
 
 
 def eff_layer(method: str, layer: int) -> int:
-    return 42 if method == NLA42 else layer
+    fixed = FIXED_LAYER.get(method, _extra_layer.get(method))
+    return layer if fixed is None else fixed
 
 
 # ------------------------------------------------------------------ step 1: mentions
@@ -392,12 +463,16 @@ def classify_hit(concept: str | None, alias: str, ctx: Mapping[str, Any]) -> str
 
 
 def cell_samples(method: str, row: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Readout record -> samples ``{si, text}`` (prose) or ``{si, tokens}`` (J-lens, decoded)."""
-    if method == "jlens":
+    """Readout record -> samples ``{si, text}`` (prose) or ``{si, tokens}`` (a token method,
+    decoded)."""
+    kind = method_kind(method)
+    if kind == KIND_TOKENS:
         return [{"si": 0, "tokens": [decode_token(t) for t in row.get("tokens") or ()]}]
     raw = row.get("samples") or []
     texts = (
-        split_samples(raw) if method == "s3d" else [str(s).strip() for s in raw if str(s).strip()]
+        split_samples(raw)
+        if kind == KIND_PACKED
+        else [str(s).strip() for s in raw if str(s).strip()]
     )
     return [{"si": i, "text": t} for i, t in enumerate(texts)]
 
@@ -427,17 +502,19 @@ def build_mentions(
     summary: str | None = None,
     summary_status: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """One readout cell -> (units, strata records). J-lens units are token hits only; summary
-    hits mark the judge's text, and a summary-only concept is a ``summary_only`` stratum."""
+    """One readout cell -> (units, strata records). A token method's (J-lens) units are token
+    hits only; summary hits mark the judge's text, and a summary-only concept is a
+    ``summary_only`` stratum."""
     item, layer, pos = row["id"], int(row["layer"]), int(row["pos"])
     base = {"method": method, "item": item, "layer": layer, "pos": pos, "gold": ctx["gold"]}
     per: dict[str, list[dict[str, Any]]] = defaultdict(list)  # concept -> samples with hits
     strata: list[dict[str, Any]] = []
     samples = cell_samples(method, row)
+    token_method = method_kind(method) == KIND_TOKENS
     for smp in samples:
         hits_by: dict[str, list[dict[str, Any]]] = defaultdict(list)
         kinds: dict[str, set[str]] = defaultdict(set)
-        if method == "jlens":
+        if token_method:
             for h in jlens_token_hits(fm, smp["tokens"]):
                 k = classify_hit(h["concept"], h["alias"], ctx)
                 if k is None:
@@ -505,7 +582,7 @@ def build_mentions(
             }
         )
     for smp in samples:
-        if method != "jlens" and CATEGORY == "country":
+        if not token_method and CATEGORY == "country":
             for m in REGIONAL_WORDS.finditer(smp["text"]):
                 strata.append(
                     {

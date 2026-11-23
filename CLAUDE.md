@@ -43,6 +43,10 @@ src/hallucination_bench/
                   process-wide RPM pacer, one asyncio semaphore, per-call Usage (tokens, USD)
   cache.py        append-only JSONL cache {key, fingerprint, ts, result, meta}; failed = result None
   readouts.py     readout contract loader, decode_token, verify_quote, normalize_ws
+  readplan.py     `hbench plan`: the index families' read plan (prompt, positions, layers per
+                  item) from the banks, in WorkspaceBench's plan row format; no tokenizer
+  readouts_check.py  `hbench readouts`: a readouts file against that plan before any judge call
+                  (docs/producing_readouts.md: plan -> producer -> check -> judge -> index)
   summarizer.py   interp-v1 token-bag -> prose prompt (verbatim)
   span_taxonomy.py  THE span taxonomy (single source of truth; rendered into the classifier prompt)
   claim_map_taxonomy.py  THE claim-map taxonomy (plan 0029: v2.7 objects untouched + parallel *_V28 text,

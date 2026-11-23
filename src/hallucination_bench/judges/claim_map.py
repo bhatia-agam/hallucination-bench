@@ -173,8 +173,8 @@ def _schemas(
     return split, unit, schema
 
 
-SPLIT_SCHEMA, UNIT_SCHEMA, SCHEMA = _schemas(False)  # single-call (default)
-SPLIT_SCHEMA_V5C, UNIT_SCHEMA_V5C, SCHEMA_V5C = _schemas(True)
+SPLIT_SCHEMA, _, SCHEMA = _schemas(False)  # single-call (default)
+SPLIT_SCHEMA_V5C, _, SCHEMA_V5C = _schemas(True)
 
 PROMPTS: dict[str, str] = {
     "SYSTEM": SYSTEM,
@@ -204,8 +204,8 @@ SYSTEM_V28 = SYSTEM_INTRO + "\n\n" + tx.render(version=tx.V28)
 SYSTEM_V5C_V28 = SYSTEM_INTRO_V5C + "\n\n" + tx.render(anchored=True, version=tx.V28)
 USER_TEMPLATE_V28 = _v28_template(USER_TEMPLATE)
 USER_TEMPLATE_V5C_V28 = _v28_template(USER_TEMPLATE_V5C)
-SPLIT_SCHEMA_V28, UNIT_SCHEMA_V28, SCHEMA_V28 = _schemas(False, v28=True)
-SPLIT_SCHEMA_V5C_V28, UNIT_SCHEMA_V5C_V28, SCHEMA_V5C_V28 = _schemas(True, v28=True)
+_, _, SCHEMA_V28 = _schemas(False, v28=True)
+_, _, SCHEMA_V5C_V28 = _schemas(True, v28=True)
 
 # claimmap-v2.9 (plan 0029 amendment): the v2.8 templates with the two prefix-check fields among
 # the leaf tags; the v2.9 taxonomy (slot rule, prefix check, EXAMPLES_V29); schemas with both
@@ -226,8 +226,8 @@ SYSTEM_V29 = SYSTEM_INTRO + "\n\n" + tx.render(version=tx.V29)
 SYSTEM_V5C_V29 = SYSTEM_INTRO_V5C + "\n\n" + tx.render(anchored=True, version=tx.V29)
 USER_TEMPLATE_V29 = _v29_template(USER_TEMPLATE)
 USER_TEMPLATE_V5C_V29 = _v29_template(USER_TEMPLATE_V5C)
-SPLIT_SCHEMA_V29, UNIT_SCHEMA_V29, SCHEMA_V29 = _schemas(False, v28=True, v29=True)
-SPLIT_SCHEMA_V5C_V29, UNIT_SCHEMA_V5C_V29, SCHEMA_V5C_V29 = _schemas(True, v28=True, v29=True)
+_, _, SCHEMA_V29 = _schemas(False, v28=True, v29=True)
+_, _, SCHEMA_V5C_V29 = _schemas(True, v28=True, v29=True)
 
 
 @dataclass(frozen=True)
@@ -1134,12 +1134,6 @@ def _established_rules(u: Unit, segs: list[Segment], c: dict[str, int]) -> None:
             s.status = "forced"
             s.leaf = tx.UNKNOWN_INCORRECT
             c["n_forced_established"] += 1
-
-
-def failed_segments(units: Sequence[Unit]) -> list[Segment]:
-    """Every unit ``failed``: a failed, pending-forever or invalid call."""
-    segs, _ = parse(None, units)
-    return segs
 
 
 def resolved_leaf(seg: dict[str, Any] | Segment) -> str:

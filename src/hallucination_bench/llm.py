@@ -5,7 +5,9 @@ Ported from WorkspaceBench ``src/wsbench/llm.py`` @ 92d763e (MIT), with these ch
 * **Keyless Anthropic auth.** ``claude-*`` models go to the Anthropic SDK. When
   ``ANTHROPIC_API_KEY`` is unset, :func:`api_key` returns ``None`` (the source raised) and the
   client is built as ``AsyncAnthropic()`` with no ``api_key``, so the SDK picks up the ``ant``
-  CLI OAuth profile. Everything else goes to OpenRouter (``OPENROUTER_API_KEY``).
+  CLI OAuth profile. With ``ANTHROPIC_AUTH_TOKEN`` set (and no key) the client sends that OAuth
+  bearer token instead, as WorkspaceBench does. Everything else goes to OpenRouter
+  (``OPENROUTER_API_KEY``).
 * **No temperature on the Anthropic route** (newer Claude models reject it), as in the source.
 * **Thinking.** Claude Opus 5.5 rejects ``thinking: {type: "disabled"}`` (400), so the request
   omits ``thinking`` and sets ``output_config.effort`` (default ``"low"``, the closest available
@@ -175,11 +177,24 @@ def _backoff(attempt: int, status: int | None) -> float:
     return min(cap, 2.0 * 2**attempt) * (0.5 + random.random())
 
 
+TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN"  # an OAuth bearer token; used only when no API key is set
+OAUTH_BETA = "oauth-2025-04-20"
+
+
 def _make_client(route_: str, key: str | None) -> Any:
     """The ONLY place SDK clients are built (tests monkeypatch this to inject fakes)."""
     if route_ == "anthropic":
         from anthropic import AsyncAnthropic
 
+        if key is None and (token := os.environ.get(TOKEN_ENV)):
+            # a static OAuth bearer token: the SDK adds the OAuth beta flag only for its own
+            # credential providers, so it goes in as a default header (as in WorkspaceBench)
+            return AsyncAnthropic(
+                auth_token=token,
+                api_key=None,
+                max_retries=0,
+                default_headers={"anthropic-beta": OAUTH_BETA},
+            )
         if key is None:  # keyless: the SDK resolves the `ant` CLI OAuth profile
             return AsyncAnthropic(max_retries=0)
         return AsyncAnthropic(api_key=key, max_retries=0)
@@ -391,8 +406,9 @@ class LLM:
                         raise JudgeConfigError(f"{name}: {str(e)[:300]}") from e
                     if _no_credentials(e):
                         raise JudgeConfigError(
-                            f"no Anthropic credentials for {model}: export ANTHROPIC_API_KEY "
-                            "or log in with `ant auth login`"
+                            f"no Anthropic credentials for {model}: export ANTHROPIC_API_KEY, "
+                            "or ANTHROPIC_AUTH_TOKEN (an OAuth bearer token), or log in with "
+                            "`ant auth login` (`hbench try --dry_run` needs none of them)"
                         ) from e
                     transient = (
                         status in _TRANSIENT

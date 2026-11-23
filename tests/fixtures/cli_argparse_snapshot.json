@@ -1246,6 +1246,107 @@
   },
   {
    "argv": [
+    "try"
+   ],
+   "kind": "other",
+   "values": {
+    "dry_run": false,
+    "family": "wsbench_chat",
+    "judge_model": "claude-opus-5-5",
+    "n": 2,
+    "out": null,
+    "readouts": null
+   }
+  },
+  {
+   "argv": [
+    "try",
+    "--family",
+    "story",
+    "-n",
+    "5",
+    "--dry-run",
+    "--out",
+    "/o",
+    "--readouts",
+    "/x/r.jsonl",
+    "--judge-model",
+    "m"
+   ],
+   "kind": "other",
+   "values": {
+    "dry_run": true,
+    "family": "story",
+    "judge_model": "m",
+    "n": 5,
+    "out": "/o",
+    "readouts": "/x/r.jsonl"
+   }
+  },
+  {
+   "argv": [
+    "check"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "",
+    "option": null,
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "all"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "all",
+    "option": null,
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "readouts_contract",
+    "--readouts",
+    "/x/r.jsonl"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "",
+    "name": "readouts_contract",
+    "option": null,
+    "readouts": "/x/r.jsonl"
+   }
+  },
+  {
+   "argv": [
+    "check",
+    "dry_run",
+    "--family",
+    "story",
+    "--option",
+    "colour=blue",
+    "--option",
+    "size=3"
+   ],
+   "kind": "other",
+   "values": {
+    "family": "story",
+    "name": "dry_run",
+    "option": [
+     "colour=blue",
+     "size=3"
+    ],
+    "readouts": ""
+   }
+  },
+  {
+   "argv": [
     "overrefusal",
     "candidates"
    ],
@@ -1761,6 +1862,12 @@
    "split": "<required>",
    "taxonomy": "v1"
   },
+  "check": {
+   "family": "",
+   "name": "",
+   "option": null,
+   "readouts": ""
+  },
   "consistency-v2": {
    "arms": null,
    "classifier_model": null,
@@ -1921,6 +2028,14 @@
    "skip_classify": false,
    "stages": null,
    "summarizer_model": null
+  },
+  "try": {
+   "dry_run": false,
+   "family": "wsbench_chat",
+   "judge_model": "claude-opus-5-5",
+   "n": 2,
+   "out": null,
+   "readouts": null
   },
   "units-v2": {
    "cases": "<required>",

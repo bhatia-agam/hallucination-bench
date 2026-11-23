@@ -23,6 +23,7 @@ from hallucination_bench.command import (
     HELP_FLAGS,
     Command,
     UsageError,
+    aliased,
     boolean,
     choice,
     help_text,
@@ -40,11 +41,19 @@ from hallucination_bench.llm import DEFAULT_EFFORT, JudgeConfigError
 DEFAULT_MODEL = "claude-opus-5-5"
 INDEX_METHODS = DATA / "index" / "methods.json"  # plan 0013: method <-> arm mapping
 READOUTS_FILE = "hallucination.jsonl"
+# Descriptive names for the values the index is built on. Each is replaced by the value it
+# stands for when the command line is parsed, so arm.json, caches, manifests and reports record
+# the value itself, exactly as a run started with the value does.
+MAP_PROMPT_NAMES = {"current": "claimmap-v2.9"}  # the claim-map prompt the index uses
+BANK_NAMES = {"main": "x3"}  # the chat question bank the index's main family runs on
+INDEX_MANIFEST = DATA / "index" / "v8_manifest.json"  # the manifest of the results of record
 AM_EVAL = "agentic_misalignment"  # plan 0008: its own driver (dispatched first in run / report)
 # modules exposing ``COMMANDS``: their subcommands follow the shared ones, in this order
 EVAL_CLIS: list[str] = [
+    "hallucination_bench.tryout",  # the two-question try-out (`hbench try`)
     "hallucination_bench.evals.overrefusal.cli",  # plan 0015
     "hallucination_bench.evals.benign_roleplay.cli",  # plan 0023
+    "hallucination_bench.checks",  # gates and sanity checks (`hbench check`)
 ]
 
 
@@ -166,7 +175,8 @@ def _apply_bank(args: Command, *, readouts: bool = False) -> None:
         args.readouts_root = str(paths.X3_READOUTS)
 
 
-def cmd_run(args: Command) -> int:
+def cmd_run(args: Command, llm: Any = None) -> int:
+    """``llm`` replaces the judge client of the main driver (``hbench try --dry-run``)."""
     _apply_bank(args, readouts=True)
     if getattr(args, "eval", None) == AM_EVAL:
         from hallucination_bench.evals.agentic_misalignment import cli as amcli
@@ -199,6 +209,7 @@ def cmd_run(args: Command) -> int:
         show_prompts=args.show_prompts,
         stages=_stages(args),
         sample_seed=args.sample_seed,
+        llm=llm,
     )
     for n, s in summaries.items():
         _print_summary(n, s)
@@ -550,11 +561,12 @@ def bank_key(c: Command) -> None:
     c.key(
         "bank",
         None,
-        optional(choice("wsb", "x3")),
+        optional(aliased(BANK_NAMES, choice("wsb", "x3"))),
         "wsbench_chat only: wsb = the WSB 149 x 8 bank; x3 = plan 0028's 3x bank "
         "($HBENCH_X3_BANK/items.json, default data/wsbench_chat_x3; run: readouts default "
         f"{paths.X3_READOUTS} = $HBENCH_X3_READOUTS). Not given: the WSB bank, or "
-        "$HBENCH_WSBENCH_CHAT_ITEMS when set",
+        "$HBENCH_WSBENCH_CHAT_ITEMS when set. main = the bank the index's main family runs on "
+        "(it stands for x3)",
     )
 
 
@@ -633,10 +645,11 @@ class Run(Command):
         self.key(
             "map_prompt",
             "claimmap-v2.7",
-            choice(_prompt_choices),
+            aliased(MAP_PROMPT_NAMES, choice(_prompt_choices)),
             "claim-map prompt version (plan 0029; recorded in arm.json, a run that differs from "
             "an arm dir's record is refused; agentic_misalignment maps claimmap-v2.8 / -v2.9 to "
-            "their +am3 versions; v8 roots use claimmap-v2.9, plan 0029 amendment)",
+            "their +am3 versions; v8 roots use claimmap-v2.9, plan 0029 amendment). current = the "
+            "prompt the index uses (it stands for claimmap-v2.9)",
         )
         self.key(
             "excuse_verifier",
@@ -730,7 +743,7 @@ class Calibrate(Command):
         self.key(
             "prompt",
             "claimmap-v2.7",
-            choice(_prompt_choices),
+            aliased(MAP_PROMPT_NAMES, choice(_prompt_choices)),
             "taxonomy=v2: the claim-map prompt version (plan 0029)",
         )
         anchor_key(self)
@@ -901,7 +914,13 @@ class Final(Command):
 
     def __init__(self) -> None:
         super().__init__()
-        self.key("manifest", pydra.REQUIRED, text, "data/index/v8_manifest.json")
+        self.key(
+            "manifest",
+            str(INDEX_MANIFEST),
+            text,
+            "the frozen manifest to check and build from (default: the shipped manifest of the "
+            "results of record)",
+        )
         self.key("out", "outputs/final", text, "index.json / index.md destination")
         self.key("plots", "plots/final", text, "plot destination")
         self.key("methods", str(INDEX_METHODS), text, "method <-> arm mapping")

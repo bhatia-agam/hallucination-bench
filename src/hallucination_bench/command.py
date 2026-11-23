@@ -6,7 +6,7 @@ and the old ``--some-flag value`` spelling), and the ``--help`` text."""
 import json
 import re
 import textwrap
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 import pydra
@@ -88,6 +88,17 @@ def choice(*options: str | Callable[[], Iterable[str]]) -> Callable[[Any], str]:
             names = ", ".join(repr(x) for x in allowed)
             raise ValueError(f"invalid choice: {v!r} (choose from {names})")
         return str(v)
+
+    return inner
+
+
+def aliased(names: Mapping[str, str], kind: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """``kind``, after a descriptive name in ``names`` is replaced by the value it stands for.
+    The command then holds, records and shows the value itself, so a run started with the
+    descriptive name writes exactly what a run started with the value writes."""
+
+    def inner(v: object) -> object:
+        return kind(names.get(v, v) if isinstance(v, str) else v)
 
     return inner
 

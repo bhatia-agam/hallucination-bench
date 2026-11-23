@@ -24,6 +24,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from hallucination_bench import readers
 from hallucination_bench.cache import Cache
 from hallucination_bench.readouts import Cell, load_readouts, normalize_ws
 
@@ -33,6 +34,14 @@ READERS = ("s3d-rl600", "mlnla-rl600-all11", "jlens")  # plan 0019 allowlist
 # plan 0024: the readers the plan-0020 / plan-0022 index exports keep = the allowlist + the final
 # O-lens campaign arm (its records live only in its own root, so every earlier export is unchanged)
 EXPORT_READERS = (*READERS, "final-olens-rl600-x4")
+
+
+def export_readers() -> tuple[str, ...]:
+    """:data:`EXPORT_READERS` plus ``readers.extra()`` (``$HBENCH_EXTRA_READERS``; none by
+    default)."""
+    return readers.with_extra(EXPORT_READERS)
+
+
 JUDGED = ("ok", "accepted_partial", "empty")
 COLUMNS = (
     "arm",

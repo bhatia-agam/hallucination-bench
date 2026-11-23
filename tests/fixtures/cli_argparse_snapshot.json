@@ -1991,6 +1991,11 @@
    "layers": null,
    "out": "outputs/plan"
   },
+  "readouts": {
+   "family": "<required>",
+   "layers": null,
+   "readouts": "<required>"
+  },
   "report": {
    "audit_n": null,
    "audit_verdict_n": 20,
